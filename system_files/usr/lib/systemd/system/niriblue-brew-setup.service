@@ -1,0 +1,13 @@
+[Unit]
+Description=Install Homebrew on first boot
+After=network-online.target
+Wants=network-online.target
+ConditionPathExists=!/var/lib/niriblue/brew-setup.done
+
+[Service]
+Type=oneshot
+ExecStart=/usr/libexec/niriblue-brew-setup
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target

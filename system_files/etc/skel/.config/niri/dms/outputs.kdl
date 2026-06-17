@@ -1,0 +1,2 @@
+// Monitor output settings. Required because config.kdl includes this file.
+// Empty is fine: niri auto-detects outputs and DMS/kanshi can populate it later.

@@ -1,0 +1,9 @@
+# Flatpaks installed on first boot. One app id per line; # and blank lines ignored.
+io.github.kolunmi.Bazaar
+com.getpostman.Postman
+com.usebottles.bottles
+com.github.tchx84.Flatseal
+com.bitwarden.desktop
+net.nokyan.Resources
+org.libreoffice.LibreOffice
+it.mijorus.gearlever

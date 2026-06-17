@@ -1,0 +1,17 @@
+#!/usr/bin/bash
+# First-boot Flatpak setup: add Flathub and install the app list. Runs once.
+set -uo pipefail
+
+MARKER=/var/lib/niriblue/flatpak-setup.done
+LIST=/usr/share/niriblue/flatpaks.list
+
+flatpak remote-add --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo || true
+
+while read -r app; do
+    [ -z "${app}" ] && continue
+    case "${app}" in \#*) continue ;; esac
+    flatpak install -y --noninteractive flathub "${app}" || true
+done < "${LIST}"
+
+mkdir -p "$(dirname "${MARKER}")"
+touch "${MARKER}"

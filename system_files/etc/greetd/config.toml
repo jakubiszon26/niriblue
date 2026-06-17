@@ -1,0 +1,7 @@
+# greetd launches DankGreeter, which starts niri after login.
+[terminal]
+vt = 1
+
+[default_session]
+user = "greeter"
+command = "dms-greeter --command niri"

@@ -1,0 +1,2 @@
+# Enable the Intertouch protocol for the ThinkPad touchpad/trackpoint
+kargs = ["psmouse.synaptics_intertouch=1"]

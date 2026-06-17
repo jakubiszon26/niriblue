@@ -1,0 +1,7 @@
+#!/usr/bin/bash
+# Run niriblue recipes. No args lists them; otherwise runs the named recipe.
+JUSTFILE=/usr/share/niriblue/just/niriblue.just
+if [ "$#" -eq 0 ]; then
+    exec just --justfile "${JUSTFILE}" --list
+fi
+exec just --justfile "${JUSTFILE}" "$@"

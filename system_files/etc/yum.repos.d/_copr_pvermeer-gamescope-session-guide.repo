@@ -1,0 +1,10 @@
+[copr:copr.fedorainfracloud.org:pvermeer:gamescope-session-guide]
+name=Copr repo for gamescope-session-guide owned by pvermeer
+baseurl=https://download.copr.fedorainfracloud.org/results/pvermeer/gamescope-session-guide/fedora-$releasever-$basearch/
+type=rpm-md
+skip_if_unavailable=True
+gpgcheck=1
+gpgkey=https://download.copr.fedorainfracloud.org/results/pvermeer/gamescope-session-guide/pubkey.gpg
+repo_gpgcheck=0
+enabled=1
+enabled_metadata=1
