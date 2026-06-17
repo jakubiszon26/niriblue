@@ -1,0 +1,3 @@
+docker:
+  ghcr.io/jakubiszon26/niriblue:
+    use-sigstore-attachments: true
