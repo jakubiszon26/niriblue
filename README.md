@@ -1,5 +1,5 @@
 # niriblue
-
+![logo](https://github.com/jakubiszon26/niriblue/blob/main/assets/niriblue_logo.png)
 My custom [Fedora bootc](https://docs.fedoraproject.org/en-US/bootc/) desktop image built around the [niri](https://github.com/YaLTeR/niri) compositor and [DankMaterialShell](https://github.com/AvengeMedia/DankMaterialShell), tuned for a ThinkPad T14 and my personal use.
 
 `ghcr.io/jakubiszon26/niriblue:latest` (cosign-signed)
