@@ -1,17 +1,39 @@
 #!/usr/bin/bash
-# First-boot Flatpak setup: add Flathub and install the app list. Runs once.
+# First-boot Flatpak setup: add Flathub and install the app list. Retries on later
+# boots until everything is installed, so a first boot with no network is fine --
+# the done-marker is only written once every app from the list is present.
 set -uo pipefail
 
 MARKER=/var/lib/niriblue/flatpak-setup.done
 LIST=/usr/share/niriblue/flatpaks.list
 
-flatpak remote-add --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo || true
+# Adding the remote from its .flatpakrepo URL needs connectivity; if it fails there
+# is no network yet, so bail without the marker and let the next boot retry.
+if ! flatpak remote-add --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo; then
+    echo "flatpak-setup: could not reach Flathub (no network?), retrying next boot" >&2
+    exit 0
+fi
 
+failed=0
 while read -r app; do
     [ -z "${app}" ] && continue
     case "${app}" in \#*) continue ;; esac
-    flatpak install -y --noninteractive flathub "${app}" || true
+
+    # Skip anything already installed so retries are cheap and idempotent
+    if flatpak info "${app}" >/dev/null 2>&1; then
+        continue
+    fi
+
+    if ! flatpak install -y --noninteractive flathub "${app}"; then
+        echo "flatpak-setup: failed to install ${app}, retrying next boot" >&2
+        failed=1
+    fi
 done < "${LIST}"
 
-mkdir -p "$(dirname "${MARKER}")"
-touch "${MARKER}"
+# Only mark done when the whole list installed; otherwise retry on the next boot.
+if [ "${failed}" -eq 0 ]; then
+    mkdir -p "$(dirname "${MARKER}")"
+    touch "${MARKER}"
+else
+    echo "flatpak-setup: some apps missing, will retry next boot" >&2
+fi

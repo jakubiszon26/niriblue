@@ -101,15 +101,18 @@ dnf5 -y install gamescope-session-guide
 
 rpm --import https://packages.microsoft.com/keys/microsoft.asc
 
+# okular, gnome-calculator, gnome-text-editor, loupe and mpv are installed as
+# Flatpaks instead (see system_files/usr/share/niriblue/flatpaks.list)
 dnf5 -y install \
-    kitty nautilus loupe mpv \
-    discord okular \
+    kitty nautilus \
+    discord \
     distrobox kde-connect \
     wine winetricks gamemode vulkan-tools \
     file-roller unzip 7zip unrar \
     fprintd fprintd-pam \
-    gnome-disk-utility gparted filelight gnome-calculator gnome-text-editor \
+    gnome-disk-utility gparted filelight \
     fuse fuse-libs flatpak fastfetch \
+    papirus-icon-theme \
     code zen-browser
 
 # Enable fingerprint authentication (T14 reader)
@@ -139,6 +142,15 @@ systemctl enable niriblue-flatpak-setup.service
 systemctl enable niriblue-brew-setup.service
 systemctl enable systemd-sysext.service
 
+### Networking: Tailscale (repo shipped via system_files/etc/yum.repos.d/tailscale.repo)
+
+rpm --import https://pkgs.tailscale.com/stable/fedora/repo.gpg
+
+dnf5 -y install tailscale
+
+# tailscaled is socket/daemon-activated; enable it so `tailscale up` works out of the box
+systemctl enable tailscaled.service
+
 ### Containers (rootless Docker) + virtualization
 
 rpm --import https://download.docker.com/linux/fedora/gpg
@@ -162,6 +174,29 @@ systemctl enable libvirtd.service
 systemctl disable docker.service docker.socket || true
 
 chmod 0755 /usr/bin/ujust
+
+### System users: reconcile shadow databases and bake users into the image
+# (1) fedora-bootc can ship an /etc/gshadow holding a group entry (e.g. utempter)
+#     that has no matching line in /etc/group. At first boot systemd-sysusers aborts
+#     its entire (atomic) run on the resulting `/etc/gshadow: Group "..." already
+#     exists` conflict, so NONE of the system users get created -- greetd included --
+#     and the graphical login never comes up. The same inconsistency silently breaks
+#     the useradd in dms-greeter's RPM preinstall scriptlet. grpconv rebuilds
+#     /etc/gshadow from /etc/group, dropping the orphaned entries.
+grpconv
+
+# (2) dms-greeter runs its session as a dedicated "greeter" user (see its tmpfiles.d,
+#     which owns /var/cache/dms-greeter as greeter:greeter, and /etc/greetd/config.toml).
+#     That user is normally created by the package's preinstall useradd, but that
+#     no-ops silently if shadow state was inconsistent during the build. Create it
+#     idempotently so the greeter always has a valid owner -- otherwise dms-greeter
+#     aborts at launch ("cache directory does not exist") and greetd never shows a login.
+getent group greeter >/dev/null || groupadd -r greeter
+getent passwd greeter >/dev/null || \
+    useradd -r -g greeter -d /var/lib/greeter -s /bin/bash -c "System Greeter" greeter
+
+# (3) Create every remaining system user now so first boot has nothing left to do.
+systemd-sysusers
 
 # Drop dnf/runtime leftovers so they are not baked into /var
 dnf5 clean all
