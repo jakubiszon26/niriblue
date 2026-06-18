@@ -121,9 +121,13 @@ rm -f /tmp/oniri.sha256
 mkdir -p /etc/systemd/user/niri.service.wants
 ln -sf /usr/lib/systemd/user/dms.service /etc/systemd/user/niri.service.wants/dms.service
 
-# Default niri config: /etc/skel for new accounts, /etc/niri as the system fallback
-mkdir -p /etc/niri
-cp -a /etc/skel/.config/niri/. /etc/niri/
+# Default niri config: /etc/skel for new accounts, /etc/niri as the system
+# fallback (used by users created before the config existed / with no ~/.config/niri).
+# Symlink /etc/niri -> the skel copy so there is a single source of truth: editing
+# system_files/etc/skel/.config/niri/ updates both. The link is relative (resolved
+# from /etc) and must point this way round -- skel holds the real files because
+# useradd copies skel contents verbatim into new home dirs.
+ln -snf skel/.config/niri /etc/niri
 
 # Wallpapers referenced by the DMS session.json seed in /etc/skel
 mkdir -p /usr/share/backgrounds/niriblue
