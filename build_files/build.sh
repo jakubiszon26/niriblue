@@ -212,6 +212,21 @@ cp -a "${TBX_SRC}/." /usr/lib/jetbrains-toolbox/
 ln -sf /usr/lib/jetbrains-toolbox/bin/jetbrains-toolbox /usr/bin/jetbrains-toolbox
 rm -rf /tmp/jbtoolbox /tmp/jbtoolbox.tar.gz
 
+### Software center: GNOME Software + PackageKit-bootc backend
+#
+# Replaces Bazaar (dropped from flatpaks.list). GNOME Software handles Flatpaks via
+# its built-in flatpak plugin (Flathub is added on first boot by
+# niriblue-flatpak-setup) and OS image updates via PackageKit using the
+# PackageKit-bootc backend (compiled in the pk-bootc-builder Containerfile stage and
+# COPY'd into the image). Switch PackageKit's default backend from dnf to bootc:
+# on a bootc system there is no RPM layering for the dnf backend to manage.
+dnf5 -y install gnome-software PackageKit
+if grep -q '^DefaultBackend=' /etc/PackageKit/PackageKit.conf; then
+    sed -i 's/^DefaultBackend=.*/DefaultBackend=bootc/' /etc/PackageKit/PackageKit.conf
+else
+    printf '\n[Daemon]\nDefaultBackend=bootc\n' >> /etc/PackageKit/PackageKit.conf
+fi
+
 # Homebrew build dependencies
 dnf5 -y install git procps-ng file gcc gcc-c++ make
 

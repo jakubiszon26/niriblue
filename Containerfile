@@ -4,6 +4,22 @@ COPY build_files /
 COPY system_files /system_files
 COPY assets /assets
 
+# Build the PackageKit-bootc backend from source -- it has no RPM or COPR, only a
+# meson build that vendors PackageKit's internal backend headers via a submodule.
+# Done in a throwaway stage so the toolchain (meson/ninja/gcc/-devel) never lands
+# in the final image; only the built .so + python helper are COPY'd across. Same
+# fedora-bootc:44 base as the final image so the backend compiles against the exact
+# PackageKit ABI it will be loaded by at runtime.
+FROM quay.io/fedora/fedora-bootc:44 AS pk-bootc-builder
+RUN dnf5 -y install git gcc meson ninja-build pkgconf-pkg-config \
+        PackageKit-devel glib2-devel && \
+    git clone --depth 1 --recurse-submodules --shallow-submodules \
+        https://github.com/FyraLabs/PackageKit-bootc.git /src && \
+    cd /src && \
+    meson setup builddir --prefix=/usr --buildtype=release && \
+    meson compile -C builddir && \
+    DESTDIR=/out meson install -C builddir
+
 # Base Image
 FROM quay.io/fedora/fedora-bootc:44
 ## Other possible base images include:
@@ -36,6 +52,12 @@ RUN --mount=type=bind,from=ctx,source=/,target=/ctx \
     --mount=type=cache,dst=/var/log \
     --mount=type=tmpfs,dst=/tmp \
     /ctx/build.sh
+
+### PackageKit-bootc backend (compiled in the pk-bootc-builder stage above).
+## libpk_backend_bootc.so -> /usr/lib64/packagekit-backend/, bootcBackend.py ->
+## /usr/share/PackageKit/helpers/bootc/. PackageKit is switched to this backend
+## (DefaultBackend=bootc) inside build.sh, and GNOME Software drives it.
+COPY --from=pk-bootc-builder /out/ /
 
 ### LINTING
 ## Verify final image and contents are correct.

@@ -1,5 +1,5 @@
 # Flatpaks installed on first boot. One app id per line; # and blank lines ignored.
-io.github.kolunmi.Bazaar
+# (Bazaar removed -- replaced by native GNOME Software + PackageKit-bootc backend.)
 com.getpostman.Postman
 com.usebottles.bottles
 com.github.tchx84.Flatseal
