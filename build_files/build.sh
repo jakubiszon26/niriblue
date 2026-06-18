@@ -72,8 +72,12 @@ plymouth-set-default-theme deus_ex
 depmod -a "${KVER}"
 dracut --no-hostonly --kver "${KVER}" --reproducible --add "ostree plymouth" -f "/usr/lib/modules/${KVER}/initramfs.img"
 test -f "/usr/lib/modules/${KVER}/initramfs.img"
-# Sanity-check the theme actually landed in the initramfs
-lsinitrd "/usr/lib/modules/${KVER}/initramfs.img" | grep -q 'plymouth/themes/deus_ex/deus_ex.script'
+# Sanity-check the theme actually landed in the initramfs. Dump to a file first:
+# piping lsinitrd into `grep -q` makes grep close the pipe on the first match, so
+# lsinitrd dies with SIGPIPE (exit 141) which pipefail would turn into a build abort.
+lsinitrd "/usr/lib/modules/${KVER}/initramfs.img" > /tmp/initramfs-contents.txt
+grep -q 'plymouth/themes/deus_ex/deus_ex.script' /tmp/initramfs-contents.txt
+rm -f /tmp/initramfs-contents.txt
 
 rm -rf "/usr/lib/modules/${OLD_KVER}"
 
@@ -244,6 +248,22 @@ getent passwd greeter >/dev/null || \
 
 # (3) Create every remaining system user now so first boot has nothing left to do.
 systemd-sysusers
+
+### Branding: present as niriblue while staying Fedora-compatible
+# ID is changed to niriblue but ID_LIKE=fedora keeps Fedora-family detection working
+# (only code matching ID=fedora *exactly* stops matching). VERSION_ID stays 44 so
+# $releasever and the COPR/RPMFusion repos keep resolving. /etc/os-release is a symlink
+# to this file, so both paths report niriblue.
+sed -i \
+    -e 's/^NAME=.*/NAME="niriblue"/' \
+    -e 's/^PRETTY_NAME=.*/PRETTY_NAME="niriblue (Fedora 44)"/' \
+    -e 's/^ID=fedora$/ID=niriblue\nID_LIKE=fedora/' \
+    -e 's/^DEFAULT_HOSTNAME=.*/DEFAULT_HOSTNAME="niriblue"/' \
+    -e 's|^HOME_URL=.*|HOME_URL="https://github.com/jakubiszon26/niriblue"|' \
+    -e 's|^BUG_REPORT_URL=.*|BUG_REPORT_URL="https://github.com/jakubiszon26/niriblue/issues"|' \
+    /usr/lib/os-release
+printf 'VARIANT="niriblue"\nVARIANT_ID=niriblue\n' >> /usr/lib/os-release
+grep -q '^ID=niriblue$' /usr/lib/os-release  # fail the build if the rebrand didn't take
 
 # Drop dnf/runtime leftovers so they are not baked into /var
 dnf5 clean all
