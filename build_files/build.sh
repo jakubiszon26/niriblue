@@ -293,20 +293,22 @@ getent passwd greeter >/dev/null || \
 systemd-sysusers
 
 ### Branding: present as niriblue while staying Fedora-compatible
-# ID is changed to niriblue but ID_LIKE=fedora keeps Fedora-family detection working
-# (only code matching ID=fedora *exactly* stops matching). VERSION_ID stays 44 so
-# $releasever and the COPR/RPMFusion repos keep resolving. /etc/os-release is a symlink
-# to this file, so both paths report niriblue.
+# NOTE: ID *must stay* "fedora". bootc-image-builder picks its build manifest from
+# "<ID>-<VERSION_ID>" and has no ID_LIKE fallback (osbuild/bootc-image-builder#690,
+# repo archived 2026-06-18), so a custom ID=niriblue breaks disk/ISO builds with
+# "could not find def file for distro niriblue-44". $releasever and the COPR/RPMFusion
+# repos also key on ID/VERSION_ID. The brand lives in the cosmetic fields instead
+# (NAME/PRETTY_NAME/VARIANT/VARIANT_ID/URLs). /etc/os-release symlinks here, so both
+# paths report the niriblue branding while ID stays Fedora-compatible.
 sed -i \
     -e 's/^NAME=.*/NAME="niriblue"/' \
     -e 's/^PRETTY_NAME=.*/PRETTY_NAME="niriblue (Fedora 44)"/' \
-    -e 's/^ID=fedora$/ID=niriblue\nID_LIKE=fedora/' \
     -e 's/^DEFAULT_HOSTNAME=.*/DEFAULT_HOSTNAME="niriblue"/' \
     -e 's|^HOME_URL=.*|HOME_URL="https://github.com/jakubiszon26/niriblue"|' \
     -e 's|^BUG_REPORT_URL=.*|BUG_REPORT_URL="https://github.com/jakubiszon26/niriblue/issues"|' \
     /usr/lib/os-release
 printf 'VARIANT="niriblue"\nVARIANT_ID=niriblue\n' >> /usr/lib/os-release
-grep -q '^ID=niriblue$' /usr/lib/os-release  # fail the build if the rebrand didn't take
+grep -q '^VARIANT_ID=niriblue$' /usr/lib/os-release  # fail the build if the rebrand didn't take
 
 # Drop dnf/runtime leftovers so they are not baked into /var
 dnf5 clean all
