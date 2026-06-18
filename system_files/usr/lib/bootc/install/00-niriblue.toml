@@ -1,0 +1,10 @@
+# bootc-image-builder (and `bootc install` generally) require the image to declare
+# a default root filesystem type. The fedora-bootc:44 base leaves it unset
+# (root-fs-type=null), so BIB fails manifest generation with
+#   "missing required info: DefaultRootFs"
+#   "no default root filesystem type specified in container, please use --rootfs"
+# Pin it here so every artifact type (qcow2 / raw / anaconda-iso) builds without
+# having to pass --rootfs. xfs is the conventional bootc root fs; switch to ext4
+# or btrfs here if desired.
+[install]
+root-fs-type = "xfs"
