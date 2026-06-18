@@ -36,6 +36,13 @@ dnf5 install -y bolt
 # Without it the AX201 has no firmware, iwlwifi never probes, and there is no wlan0.
 dnf5 install -y iwlwifi-mvm-firmware
 
+# NetworkManager WiFi support: fedora-bootc ships only the NetworkManager core, while
+# the WiFi device plugin (NetworkManager-wifi -> libnm-device-plugin-wifi.so) and the
+# WPA backend (wpa_supplicant) are weak deps the minimal base omits. Without the plugin
+# NM marks the wlan device "unmanaged by default" (reason 69) and never scans, so no
+# networks ever appear (e.g. in the DankMaterialShell network widget).
+dnf5 install -y NetworkManager-wifi wpa_supplicant
+
 ### Kernel: replace the Fedora kernel with CachyOS (COPR repos via system_files)
 
 # Stock kernel version, used below to drop its orphaned files after the swap
