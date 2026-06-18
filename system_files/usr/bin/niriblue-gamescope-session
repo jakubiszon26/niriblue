@@ -1,0 +1,71 @@
+#!/usr/bin/bash
+#
+# niriblue-gamescope-session — wrapper around the stock gamescope-session that
+# steers the embedded Steam/gamescope session onto a connected eGPU when one is
+# present, falling back to the laptop's internal panel otherwise.
+#
+# Why this exists: gamescope defaults to the first Vulkan device (the Intel iGPU)
+# and favours the internal eDP panel. On a ThinkPad T14 + GPD G1 eGPU (AMD) the
+# session therefore always started on the laptop screen, even with a monitor wired
+# to the eGPU. We discover, at runtime, a non-Intel GPU that drives a connected
+# non-eDP output and pin gamescope to it with --prefer-output / --prefer-vk-device.
+#
+# Everything is detected live: DRM card numbers and connector names are NOT stable
+# across boots, nor is which port the monitor is plugged into, so nothing is
+# hardcoded. With no eGPU display present this behaves like the stock session.
+
+export GAMESCOPE_MODE_SAVE_FILE="$HOME/.config/gamescope/modes.cfg"
+
+log() { printf '[niriblue-gamescope-session] %s\n' "$*" >&2; }
+
+EGPU_OUTPUTS=""
+EGPU_VKID=""
+
+# Find a discrete/external GPU (driver other than the Intel i915/xe) that has at
+# least one connected output which is not the internal panel.
+for card in /sys/class/drm/card[0-9]*; do
+    [ -e "$card/device/driver" ] || continue          # skip connector subdirs
+    drv=$(basename "$(readlink -f "$card/device/driver")")
+    case "$drv" in
+        i915|xe) continue ;;                          # the integrated Intel GPU
+    esac
+
+    cardname=$(basename "$card")                       # e.g. card0
+    outs=""
+    for st in "$card"-*/status; do
+        [ -e "$st" ] || continue
+        [ "$(cat "$st")" = "connected" ] || continue
+        conn=${st%/status}; conn=${conn##*/}           # e.g. card0-HDMI-A-2
+        conn=${conn#"${cardname}"-}                    # e.g. HDMI-A-2
+        case "$conn" in
+            eDP*|Writeback*) continue ;;               # never the laptop panel
+        esac
+        outs="${outs:+$outs,}$conn"
+    done
+
+    [ -n "$outs" ] || continue
+
+    ven=$(cat "$card/device/vendor" 2>/dev/null)
+    dev=$(cat "$card/device/device" 2>/dev/null)
+    EGPU_OUTPUTS="$outs"
+    EGPU_VKID="${ven#0x}:${dev#0x}"
+    log "eGPU detected: $drv ($EGPU_VKID); outputs: $EGPU_OUTPUTS"
+    break
+done
+
+GS_ARGS=()
+if [ -n "$EGPU_OUTPUTS" ]; then
+    GS_ARGS+=(--prefer-output "$EGPU_OUTPUTS" --prefer-vk-device "$EGPU_VKID")
+else
+    log "no external GPU display found; using internal panel / gamescope defaults"
+    [ -n "$GAMESCOPE_SESSION_OUTPUT" ] && GS_ARGS+=(--prefer-output "$GAMESCOPE_SESSION_OUTPUT")
+fi
+
+MANGOAPP_FLAG=()
+if command -v mangoapp &>/dev/null; then
+    MANGOAPP_FLAG=(--mangoapp)
+else
+    log "mangoapp not available; continuing without --mangoapp"
+fi
+
+exec gamescope "${GS_ARGS[@]}" "${MANGOAPP_FLAG[@]}" -e -- steam -steamdeck -steamos3

@@ -161,6 +161,14 @@ systemctl set-default graphical.target
 # steam, gamescope and mangohud
 dnf5 -y install gamescope-session-guide
 
+# Route the Steam session through niriblue-gamescope-session (shipped via
+# system_files), which auto-targets a connected eGPU display instead of always
+# landing on the laptop's internal panel. steam.desktop is owned by the RPM, so
+# patch its Exec= here, *after* the install, otherwise it would be overwritten.
+chmod 0755 /usr/bin/niriblue-gamescope-session
+sed -i 's|^Exec=gamescope-session$|Exec=niriblue-gamescope-session|' \
+    /usr/share/wayland-sessions/steam.desktop
+
 ### Applications (external repos via system_files: vscode.repo, zen-browser COPR)
 
 rpm --import https://packages.microsoft.com/keys/microsoft.asc
