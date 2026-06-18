@@ -129,6 +129,9 @@ ln -sf /usr/lib/systemd/user/dms.service /etc/systemd/user/niri.service.wants/dm
 # useradd copies skel contents verbatim into new home dirs.
 ln -snf skel/.config/niri /etc/niri
 
+# First-login helper that pops niri's hotkey overlay once (spawn-at-startup).
+chmod 0755 /usr/bin/niriblue-first-run-keybinds
+
 # Wallpapers referenced by the DMS session.json seed in /etc/skel
 mkdir -p /usr/share/backgrounds/niriblue
 cp /ctx/assets/light.png /ctx/assets/dark.png /usr/share/backgrounds/niriblue/

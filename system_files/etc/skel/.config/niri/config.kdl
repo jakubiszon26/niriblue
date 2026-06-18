@@ -9,6 +9,9 @@ config-notification {
 spawn-at-startup "oniri"
 spawn-at-startup "kanshi"
 spawn-at-startup "/usr/bin/gnome-keyring-daemon" "--start" "--components=secrets,ssh,pkcs11"
+// Pokaż overlay skrótów raz, przy pierwszym logowaniu (skip-at-startup niżej
+// blokuje go przy każdym starcie; ten skrypt odpala go jednorazowo per user).
+spawn-at-startup "/usr/bin/niriblue-first-run-keybinds"
 
 // Outputs from existing configuration
 gestures {
