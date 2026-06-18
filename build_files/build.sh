@@ -129,6 +129,12 @@ cp -a /etc/skel/.config/niri/. /etc/niri/
 mkdir -p /usr/share/backgrounds/niriblue
 cp /ctx/assets/light.png /ctx/assets/dark.png /usr/share/backgrounds/niriblue/
 
+# Branding logos referenced by the DMS settings.json seed in /etc/skel
+# (dock launcher + bar launcher button). Shipped system-wide so every account's
+# settings.json can point at a stable absolute path instead of a user home dir.
+mkdir -p /usr/share/niriblue/assets
+cp /ctx/assets/flame.svg /ctx/assets/flame_pixel.svg /usr/share/niriblue/assets/
+
 dnf5 -y install pipewire wireplumber pipewire-pulseaudio pipewire-alsa
 
 # XDG portals (gtk fallback, gnome for screencast) + secret service

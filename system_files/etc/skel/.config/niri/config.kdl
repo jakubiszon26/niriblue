@@ -24,7 +24,7 @@ input {
             // Dwa układy:
             //   1. pl + variant dvorak  (DEFAULT po starcie)
             //   2. pl + variant ""      (zwykły polski QWERTY)
-            // Przełącznik: LEWY CTRL + LEWY SHIFT (grp:lctrl_lshift_toggle)
+            // Przełącznik: PRAWY SHIFT + LEWY SHIFT grp:shifts_toggle
             // RightAlt zostaje akceleratorem polskich znaków (ą/ę/ć/ł/ń/ó/ś/ź/ż)
             //
             // Inne opcje przełączania jakbyś chciał zmienić:
@@ -134,7 +134,7 @@ hotkey-overlay {
 
 prefer-no-csd
 
-screenshot-path "~/Pictures/Screenshots/Screenshot from %Y-%m-%d %H-%M-%S.png"
+screenshot-path "~/Obrazy/Zrzuty ekranu/Screenshot from %Y-%m-%d %H-%M-%S.png"
 
 animations {
     workspace-switch {
