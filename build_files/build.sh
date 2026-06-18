@@ -100,6 +100,12 @@ dnf5 -y install pipewire wireplumber pipewire-pulseaudio pipewire-alsa
 # XDG portals (gtk fallback, gnome for screencast) + secret service
 dnf5 -y install xdg-desktop-portal-gtk xdg-desktop-portal-gnome gnome-keyring
 
+# Power profiles: DMS's profile widget (Quickshell UPower PowerProfiles) talks to the
+# net.hadess.PowerProfiles D-Bus interface, which nothing in the base image provides.
+# power-profiles-daemon supplies it (D-Bus activated; enable so it's always available).
+dnf5 -y install power-profiles-daemon
+systemctl enable power-profiles-daemon.service
+
 # X11-on-Wayland (Steam/Discord) + polkit agent
 dnf5 -y install xwayland-satellite mate-polkit
 
