@@ -1,2 +1,9 @@
-# Enable the Intertouch protocol for the ThinkPad touchpad/trackpoint
-kargs = ["psmouse.synaptics_intertouch=1"]
+# Enable the Intertouch protocol for the ThinkPad touchpad/trackpoint.
+# rhgb + quiet + splash trigger the Plymouth graphical boot splash (deus_ex theme)
+# and keep the LUKS unlock prompt graphical instead of dumping kernel logs.
+kargs = [
+    "psmouse.synaptics_intertouch=1",
+    "rhgb",
+    "quiet",
+    "splash",
+]

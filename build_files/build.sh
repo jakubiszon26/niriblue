@@ -52,10 +52,28 @@ rpm -q kernel-cachyos-core
 
 KVER="$(rpm -q kernel-cachyos-core --qf '%{VERSION}-%{RELEASE}.%{ARCH}')"
 
-# The ostree dracut module is required for bootc to mount the deployment
+# Plymouth boot splash + graphical LUKS unlock prompt. This must run BEFORE the
+# initramfs is built below: dracut's plymouth module embeds whatever theme is set
+# as default, plus the plugin that theme needs, into the initramfs. The deus_ex
+# theme (adi1090x/plymouth-themes, pack_2) is a script-plugin theme, so it needs
+# plymouth-plugin-script; plymouth-plugin-label renders the password text.
+dnf5 -y install plymouth plymouth-scripts plymouth-plugin-script plymouth-plugin-label
+
+curl -fsSL https://github.com/adi1090x/plymouth-themes/archive/refs/heads/master.tar.gz -o /tmp/plymouth-themes.tar.gz
+mkdir -p /tmp/plymouth-themes /usr/share/plymouth/themes
+tar -xzf /tmp/plymouth-themes.tar.gz -C /tmp/plymouth-themes --strip-components=1
+cp -a /tmp/plymouth-themes/pack_2/deus_ex /usr/share/plymouth/themes/
+rm -rf /tmp/plymouth-themes /tmp/plymouth-themes.tar.gz
+
+plymouth-set-default-theme deus_ex
+
+# The ostree dracut module is required for bootc to mount the deployment;
+# the plymouth module embeds the splash for early boot + LUKS unlock.
 depmod -a "${KVER}"
-dracut --no-hostonly --kver "${KVER}" --reproducible --add ostree -f "/usr/lib/modules/${KVER}/initramfs.img"
+dracut --no-hostonly --kver "${KVER}" --reproducible --add "ostree plymouth" -f "/usr/lib/modules/${KVER}/initramfs.img"
 test -f "/usr/lib/modules/${KVER}/initramfs.img"
+# Sanity-check the theme actually landed in the initramfs
+lsinitrd "/usr/lib/modules/${KVER}/initramfs.img" | grep -q 'plymouth/themes/deus_ex/deus_ex.script'
 
 rm -rf "/usr/lib/modules/${OLD_KVER}"
 
