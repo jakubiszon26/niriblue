@@ -69,6 +69,24 @@ dnf5 -y install --allowerasing \
 # that conflicts with okular/kde-connect/filelight.
 dnf5 -y install niri dms dms-greeter quickshell-git kanshi
 
+# oniri: auto-maximizes the only window in a niri workspace (used via
+# `spawn-at-startup "oniri"` in the niri config). Not packaged for Fedora, so pull
+# the upstream prebuilt static-musl binary and verify its checksum before installing.
+ONIRI_VER="1.2.2"
+curl -fsSL "https://github.com/Antiz96/oniri/releases/download/v${ONIRI_VER}/oniri-${ONIRI_VER}-x86_64" -o /usr/bin/oniri
+curl -fsSL "https://github.com/Antiz96/oniri/releases/download/v${ONIRI_VER}/oniri-${ONIRI_VER}-x86_64.sha256" -o /tmp/oniri.sha256
+echo "$(awk '{print $1}' /tmp/oniri.sha256)  /usr/bin/oniri" | sha256sum -c -
+chmod 0755 /usr/bin/oniri
+rm -f /tmp/oniri.sha256
+
+# Autostart the DMS shell in every niri session. dms.service is a systemd *user*
+# unit (ExecStart=dms run --session); the `dms` CLI normally enables it per-user, so
+# fresh accounts never get it and the catch-all `disable *` user-preset keeps it off.
+# Enable it image-wide via a global user-unit symlink, scoped to niri.service.wants
+# so it does NOT also launch in the Steam/gamescope session.
+mkdir -p /etc/systemd/user/niri.service.wants
+ln -sf /usr/lib/systemd/user/dms.service /etc/systemd/user/niri.service.wants/dms.service
+
 # Default niri config: /etc/skel for new accounts, /etc/niri as the system fallback
 mkdir -p /etc/niri
 cp -a /etc/skel/.config/niri/. /etc/niri/
