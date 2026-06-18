@@ -1,6 +1,12 @@
 {
   "configVersion": 3,
   "isLightMode": false,
+  "pinnedApps": [
+    "zen",
+    "org.gnome.Nautilus",
+    "kitty",
+    "steam"
+  ],
   "wallpaperPath": "/usr/share/backgrounds/niriblue/dark.png",
   "wallpaperPathLight": "/usr/share/backgrounds/niriblue/light.png",
   "wallpaperPathDark": "/usr/share/backgrounds/niriblue/dark.png"
