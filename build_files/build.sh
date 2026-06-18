@@ -31,6 +31,11 @@ dnf5 install -y --allowerasing ffmpeg
 # Thunderbolt device authorization for the eGPU (bolt.service is D-Bus activated)
 dnf5 install -y bolt
 
+# Intel WiFi firmware: Fedora 44 split the iwlwifi firmware out of linux-firmware
+# into iwlwifi-mvm-firmware, pulled only as a weak dep that the bootc base omits.
+# Without it the AX201 has no firmware, iwlwifi never probes, and there is no wlan0.
+dnf5 install -y iwlwifi-mvm-firmware
+
 ### Kernel: replace the Fedora kernel with CachyOS (COPR repos via system_files)
 
 # Stock kernel version, used below to drop its orphaned files after the swap
