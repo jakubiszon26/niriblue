@@ -144,6 +144,14 @@ cp /ctx/assets/flame.svg /ctx/assets/flame_pixel.svg /usr/share/niriblue/assets/
 
 dnf5 -y install pipewire wireplumber pipewire-pulseaudio pipewire-alsa
 
+# Internal speaker firmware: the T14's HD-Audio (Intel TGL 8086:a0c8 + Realtek ALC
+# codec) is driven by the SOF DSP, which needs its DSP firmware + topology blobs
+# (/usr/lib/firmware/intel/sof{,-tplg}). These live in alsa-sof-firmware, a weak dep
+# the bootc base omits. Without it the SOF DSP never boots, the internal codec never
+# registers (/proc/asound/cards is empty), PipeWire falls back to "Dummy Output", and
+# only external sinks with their own audio controller (eGPU/HDMI) produce sound.
+dnf5 -y install alsa-sof-firmware
+
 # XDG portals (gtk fallback, gnome for screencast) + secret service
 dnf5 -y install xdg-desktop-portal-gtk xdg-desktop-portal-gnome gnome-keyring
 
