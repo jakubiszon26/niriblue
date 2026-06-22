@@ -6,7 +6,7 @@
 default:
     @just --justfile /usr/share/niriblue/just/niriblue.just --list
 
-# Update everything: system image, flatpaks, Homebrew
+# Update everything: system image, flatpaks, sysexts, Nix/home-manager
 update:
     #!/usr/bin/bash
     set -uo pipefail
@@ -14,9 +14,17 @@ update:
     sudo bootc upgrade
     echo ">> Flatpaks"
     flatpak update -y || true
-    if [ -x /var/home/linuxbrew/.linuxbrew/bin/brew ]; then
-        echo ">> Homebrew"
-        /var/home/linuxbrew/.linuxbrew/bin/brew update && /var/home/linuxbrew/.linuxbrew/bin/brew upgrade || true
+    if command -v sysexts-manager >/dev/null; then
+        echo ">> sysexts"
+        sudo sysexts-manager update || true
+    fi
+    if command -v nix >/dev/null; then
+        echo ">> Nix"
+        nix profile upgrade --all || true
+    fi
+    if command -v home-manager >/dev/null; then
+        echo ">> home-manager"
+        home-manager switch --flake "$HOME/.config/home-manager#niriblue" || true
     fi
 
 # Reclaim space: prune containers, unused flatpaks, and old journal logs

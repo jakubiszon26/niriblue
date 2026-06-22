@@ -302,13 +302,14 @@ else
     printf '\n[Daemon]\nDefaultBackend=bootc\n' >> /etc/PackageKit/PackageKit.conf
 fi
 
-# Homebrew build dependencies
-dnf5 -y install git procps-ng file gcc gcc-c++ make
+# git stays in the image: Nix flakes / home-manager (the dev-tooling layer) expect it in
+# PATH. The rest of the old Homebrew build toolchain (gcc/make/...) is gone -- per-user
+# build tooling now comes from Nix, not a system-wide compiler set.
+dnf5 -y install git
 
-chmod 0755 /usr/libexec/niriblue-flatpak-setup /usr/libexec/niriblue-brew-setup
+chmod 0755 /usr/libexec/niriblue-flatpak-setup
 
 systemctl enable niriblue-flatpak-setup.service
-systemctl enable niriblue-brew-setup.service
 systemctl enable systemd-sysext.service
 
 ### Nix (per-user dev-tooling layer; see LAYERING.md). Upstream Nix is installed at
