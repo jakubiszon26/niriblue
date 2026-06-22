@@ -10,8 +10,8 @@ My custom [Fedora bootc](https://docs.fedoraproject.org/en-US/bootc/) desktop im
 - **Desktop:** niri + DankMaterialShell, `greetd` with the DMS greeter and dvorak-first keybinds.
 - **Hardware:** Mesa + Vulkan, VA-API (Intel + AMD freeworld), full ffmpeg, Thunderbolt (`bolt`), fingerprint auth.
 - **Gaming:** Steam gamescope session and wine.
-- **Apps:** RPMs (Kitty, Nautilus, Zen, VS Code, KDE Connect, virt-manager, …) plus various Flatpaks installed on first boot.
-- **Extras:** Tailscale, rootless Docker (opt-in), libvirt/KVM, Homebrew, Flatpak/Flathub, `ujust` recipes.
+- **Apps:** RPMs (Kitty, Nautilus, Zen, KDE Connect, virt-manager, …) plus various Flatpaks installed on first boot.
+- **Extras:** rootless Docker (opt-in), libvirt/KVM, Nix + home-manager, Flatpak/Flathub, `sysexts-manager` (add/removable system extensions — none installed by default), `ujust` recipes.
 
 ## Usage
 

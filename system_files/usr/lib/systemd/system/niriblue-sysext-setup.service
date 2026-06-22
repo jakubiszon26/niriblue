@@ -1,5 +1,5 @@
 [Unit]
-Description=Bootstrap sysexts-manager + niriblue sysexts (vscode, tailscale) on first boot
+Description=Bootstrap the sysexts-manager tool on first boot (no sysexts installed by default)
 # Ordered after the first-boot orchestrator (see niriblue-nix-setup.service for why).
 After=network-online.target systemd-sysext.service niriblue-firstboot.service
 Wants=network-online.target

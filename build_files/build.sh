@@ -257,12 +257,12 @@ chmod 0755 /usr/bin/niriblue-gamescope-session
 sed -i 's|^Exec=gamescope-session$|Exec=niriblue-gamescope-session|' \
     /usr/share/wayland-sessions/steam.desktop
 
-### Applications (external repos via system_files: vscode.repo, zen-browser COPR)
-
-rpm --import https://packages.microsoft.com/keys/microsoft.asc
+### Applications (external repos via system_files: zen-browser COPR)
 
 # okular, gnome-calculator, gnome-text-editor, loupe and mpv are installed as
-# Flatpaks instead (see system_files/usr/share/niriblue/flatpaks.list)
+# Flatpaks instead (see system_files/usr/share/niriblue/flatpaks.list). vscode and
+# tailscale are NOT shipped by default -- add them post-install via sysexts-manager
+# (see LAYERING.md), so users who do not want them are not forced to carry them.
 dnf5 -y install \
     kitty nautilus \
     discord \
@@ -273,7 +273,7 @@ dnf5 -y install \
     gnome-disk-utility gparted filelight \
     fuse fuse-libs flatpak fastfetch \
     papirus-icon-theme \
-    code zen-browser
+    zen-browser
 
 # Enable fingerprint authentication (T14 reader)
 authselect enable-feature with-fingerprint
@@ -333,11 +333,10 @@ chmod 0755 /usr/libexec/niriblue-nix-setup
 systemctl enable niriblue-nix-setup.service
 
 ### sysexts (add/removable native FHS apps; see LAYERING.md). systemd-sysext.service is
-### already enabled above. niriblue-sysext-setup bootstraps sysexts-manager and adds the
-### vscode + tailscale sysexts from the community channel at first boot -- they live in
-### /var/lib/extensions (machine state), so they can't be baked into the image. In this
-### image they run ALONGSIDE the RPM vscode/tailscale (sysext overlays /usr); the RPMs
-### are dropped in a later commit only after this path is verified on a real boot.
+### already enabled above. niriblue-sysext-setup bootstraps ONLY the sysexts-manager tool
+### itself at first boot (it lives in /var/lib/extensions, machine state, so it can't be
+### baked into the image). niriblue ships NO sysexts by default -- users add whatever they
+### want post-install with `sysexts-manager add <name> <url> && sysexts-manager enable`.
 chmod 0755 /usr/libexec/niriblue-sysext-setup
 systemctl enable niriblue-sysext-setup.service
 
@@ -348,15 +347,6 @@ systemctl enable niriblue-sysext-setup.service
 ### standalone setup units above remain the per-boot retry net for anything unfinished.
 chmod 0755 /usr/libexec/niriblue-firstboot
 systemctl enable niriblue-firstboot.service
-
-### Networking: Tailscale (repo shipped via system_files/etc/yum.repos.d/tailscale.repo)
-
-rpm --import https://pkgs.tailscale.com/stable/fedora/repo.gpg
-
-dnf5 -y install tailscale
-
-# tailscaled is socket/daemon-activated; enable it so `tailscale up` works out of the box
-systemctl enable tailscaled.service
 
 ### Containers (rootless Docker) + virtualization
 

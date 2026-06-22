@@ -2,7 +2,7 @@
 # First-boot setup orchestrator with a visible progress screen.
 #
 # Purpose: on the very first boot, drive the per-user/runtime install steps (Flatpak
-# GUI apps, vscode/tailscale sysexts, Nix) IN SEQUENCE while the Plymouth boot splash is
+# GUI apps, the sysexts-manager tool, Nix) IN SEQUENCE while the Plymouth boot splash is
 # still up, so the user sees "what is being installed" instead of being dropped onto a
 # half-populated desktop. The greeter (greetd) is ordered after this unit, so the
 # desktop does not appear until this finishes (see niriblue-firstboot.service).
@@ -34,9 +34,9 @@ progress 10
 timeout 900 /usr/libexec/niriblue-flatpak-setup || say "Aplikacje dokończą się w tle."
 progress 45
 
-# Step 2/3: vscode + tailscale system extensions.
-say "Instaluję rozszerzenia systemu: VS Code, Tailscale – krok 2/3…"
-timeout 300 /usr/libexec/niriblue-sysext-setup || say "Rozszerzenia dokończą się w tle."
+# Step 2/3: sysexts-manager tool (no sysexts are installed by default).
+say "Przygotowuję menedżer rozszerzeń systemu (sysexts-manager) – krok 2/3…"
+timeout 300 /usr/libexec/niriblue-sysext-setup || say "Menedżer rozszerzeń dokończy się w tle."
 progress 65
 
 # Step 3/3: Nix (per-user dev tooling).

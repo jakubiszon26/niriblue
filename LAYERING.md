@@ -23,8 +23,15 @@ Native FHS apps that want system integration but should be **add/removable witho
 rebuilding the image**. Managed at runtime via `sysexts-manager`
 (`extensions.fcos.fr/community`); images live in `/var/lib/extensions` (machine state).
 
-In this image: **vscode**, **tailscale**. Bootstrapped on first boot by
-`niriblue-sysext-setup`.
+**niriblue ships NO sysexts by default.** `niriblue-sysext-setup` only bootstraps the
+`sysexts-manager` tool itself on first boot; the user installs whatever they want after
+install, so nobody is forced to carry apps they do not use:
+
+```bash
+sudo sysexts-manager add vscode https://extensions.fcos.fr/community
+sudo sysexts-manager enable vscode      # downloads + merges into /usr
+# same pattern for tailscale, etc.
+```
 
 Use a sysext **only** for things that overlay `/usr` and can load late in boot. Do **not**
 use a sysext for anything that needs `/etc` at early boot or that ships kernel modules —
@@ -54,7 +61,9 @@ Sandboxed graphical applications. Flathub + the app list are set up on first boo
 The sysext, Nix and Flatpak layers install at **first boot**, not at image build (they
 live in `/var`, which is machine-local state on bootc). `niriblue-firstboot` runs the
 three steps in sequence while the Plymouth splash is still up and **before the greeter**,
-so the desktop only appears once setup is done, with on-screen progress.
+so the desktop only appears once setup is done, with on-screen progress. (For the sysext
+step this means only the `sysexts-manager` tool itself — niriblue installs no sysexts by
+default; see layer 2.)
 
 It is resilient by design:
 
@@ -92,8 +101,3 @@ cp -n /etc/skel/.config/home-manager/{flake.nix,home.nix} ~/.config/home-manager
 home-manager switch --flake ~/.config/home-manager#niriblue
 ```
 
-### Transitional: vscode/tailscale exist as both RPM and sysext
-Currently `code` and `tailscale` are installed as RPMs **and** provided as sysexts (the
-sysext overlays `/usr` and shadows the RPM binaries). The RPMs + their repos are removed
-in a later change, only after the sysext path is verified on a real boot — so there is
-never a window without an editor or VPN.

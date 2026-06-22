@@ -1,28 +1,24 @@
 #!/usr/bin/bash
-# First-boot bootstrap of sysexts-manager + the niriblue sysext set (vscode, tailscale)
-# from the community channel (extensions.fcos.fr/community). This is the "native FHS app,
-# add/removable without an image rebuild" layer (see LAYERING.md).
+# First-boot bootstrap of the sysexts-manager tool ONLY.
 #
-# It lives in /var/lib/extensions* -- machine-local state on bootc -- so it cannot be
-# baked into the image and runs here at first boot instead, mirroring the flatpak/nix
-# setup units (idempotent + retry until network is up and the sysext is merged).
+# niriblue ships NO sysexts by default: this just makes the `sysexts-manager` binary
+# available and merged into /usr so the user can add whatever they want after install
+# (`sysexts-manager add <name> <url> && sysexts-manager enable`). See LAYERING.md.
 #
-# In THIS image the RPM `code` and `tailscale` are still installed alongside these
-# sysexts on purpose; the sysext overlays /usr and shadows the RPM binaries. The RPMs
-# are removed in a later commit only after this path is verified on a real boot.
+# sysexts-manager lives in /var/lib/extensions* -- machine-local state on bootc -- so it
+# cannot be baked into the image and is fetched here at first boot instead, mirroring the
+# flatpak/nix setup units (idempotent + retry until network is up and the sysext is merged).
 set -uo pipefail
 
 MARKER=/var/lib/niriblue/sysext-setup.done
 SM_VERSION="0.3.3"        # sysexts-manager release (pinned)
 VERSION_ID="44"           # Fedora major
 ARCH="x86-64"             # systemd arch name
-COMMUNITY="https://extensions.fcos.fr/community"
-SYSEXTS=(vscode tailscale)
 
 URL="https://github.com/travier/sysexts-manager/releases/download/sysexts-manager"
 NAME="sysexts-manager-${SM_VERSION}-${VERSION_ID}-${ARCH}.raw"
 
-# 1) Install the sysexts-manager sysext itself if not present yet.
+# Install the sysexts-manager sysext itself if not present yet.
 if [ ! -e "/var/lib/extensions.d/${NAME}" ]; then
     install -d -m 0755 -o 0 -g 0 /var/lib/extensions /var/lib/extensions.d /run/extensions
     tmp="$(mktemp)"
@@ -46,27 +42,6 @@ if ! command -v sysexts-manager >/dev/null 2>&1; then
     exit 0
 fi
 
-# 2) Add + enable the niriblue sysexts from the community channel. `add` downloads the
-#    image into /var/lib/extensions.d/; presence of a "<name>-*.raw" there is the truth
-#    for idempotency (so reruns are cheap and the marker only lands when both are in).
-failed=0
-for s in "${SYSEXTS[@]}"; do
-    if ! ls /var/lib/extensions.d/ 2>/dev/null | grep -q "^${s}-"; then
-        sysexts-manager add "${s}" "${COMMUNITY}" || true
-    fi
-    if ls /var/lib/extensions.d/ 2>/dev/null | grep -q "^${s}-"; then
-        sysexts-manager enable "${s}" || failed=1
-    else
-        echo "sysext-setup: ${s} not installed yet, will retry next boot" >&2
-        failed=1
-    fi
-done
-sysexts-manager refresh || true
-
-if [ "${failed}" -eq 0 ]; then
-    mkdir -p "$(dirname "${MARKER}")"
-    touch "${MARKER}"
-    echo "sysext-setup: vscode + tailscale sysexts ready"
-else
-    echo "sysext-setup: some sysexts missing, will retry next boot" >&2
-fi
+mkdir -p "$(dirname "${MARKER}")"
+touch "${MARKER}"
+echo "sysext-setup: sysexts-manager ready (no sysexts installed by default)"
