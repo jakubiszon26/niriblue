@@ -296,6 +296,18 @@ else
     printf '\n[Daemon]\nDefaultBackend=bootc\n' >> /etc/PackageKit/PackageKit.conf
 fi
 
+### niriblue Portal: GTK4 GUI front-end for the ujust recipes (the niriblue
+### counterpart of the Bazzite Portal / ublue-os yafti-gtk). It lives in the IMAGE
+### layer rather than as a Flatpak because it drives host tooling (`ujust`, bootc,
+### flatpak, sysexts-manager, kitty) directly -- a sandboxed Flatpak could not.
+# The script (/usr/bin/niriblue-portal), config (/usr/share/niriblue/portal/portal.yml),
+# desktop entry, icon and metainfo all ship via system_files. It needs the GTK4/Adwaita
+# Python bindings (PyGObject) + PyYAML; gtk4/libadwaita are already pulled in by
+# nautilus/gnome-software but are listed here so the dependency is explicit.
+dnf5 -y install python3-gobject python3-pyyaml gtk4 libadwaita
+chmod 0755 /usr/bin/niriblue-portal
+gtk4-update-icon-cache -f /usr/share/icons/hicolor 2>/dev/null || true
+
 # git stays in the image: Nix flakes / home-manager (the dev-tooling layer) expect it in
 # PATH. The rest of the old Homebrew build toolchain (gcc/make/...) is gone -- per-user
 # build tooling now comes from Nix, not a system-wide compiler set.

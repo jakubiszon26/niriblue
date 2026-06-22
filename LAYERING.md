@@ -54,6 +54,13 @@ re-run `home-manager switch --flake ~/.config/home-manager#niriblue` (or `ujust 
 Sandboxed graphical applications. Flathub + the app list are set up on first boot by
 `niriblue-flatpak-setup` (`/usr/share/niriblue/flatpaks.list`). Already in place; leave it.
 
+> **Exception — niriblue Portal.** The Portal is a GUI app but ships in the **IMAGE**
+> layer, not as a Flatpak, because it is a system control panel that drives host tooling
+> directly (`ujust`, `bootc`, `flatpak`, `sysexts-manager`, kitty). A sandboxed Flatpak
+> could not run those. It is `/usr/bin/niriblue-portal` (a small GTK4/Adwaita script) +
+> `/usr/share/niriblue/portal/portal.yml`; add/remove actions by editing the YAML to match
+> `niriblue.just`.
+
 ## Decision guide
 
 | Need | Layer |

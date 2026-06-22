@@ -1,0 +1,11 @@
+[Desktop Entry]
+Name=niriblue Portal
+Comment=Run niriblue ujust recipes from a GUI
+Comment[pl]=Uruchamiaj recepty ujust niriblue z poziomu GUI
+Exec=niriblue-portal /usr/share/niriblue/portal/portal.yml
+Icon=io.github.jakubiszon26.niriblue_portal
+Terminal=false
+Type=Application
+Categories=Settings;
+Keywords=niriblue;ujust;setup;configuration;portal;
+StartupWMClass=io.github.jakubiszon26.niriblue_portal

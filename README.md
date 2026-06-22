@@ -11,7 +11,7 @@ My custom [Fedora bootc](https://docs.fedoraproject.org/en-US/bootc/) desktop im
 - **Hardware:** Mesa + Vulkan, VA-API (Intel + AMD freeworld), full ffmpeg, Thunderbolt (`bolt`), fingerprint auth.
 - **Gaming:** Steam gamescope session and wine.
 - **Apps:** RPMs (Kitty, Nautilus, Zen, KDE Connect, virt-manager, …) plus various Flatpaks installed on first boot.
-- **Extras:** rootless Docker (opt-in), libvirt/KVM, Nix + home-manager, Flatpak/Flathub, `sysexts-manager` (add/removable system extensions — none installed by default), `ujust` recipes.
+- **Extras:** rootless Docker (opt-in), libvirt/KVM, Nix + home-manager, Flatpak/Flathub, `sysexts-manager` (add/removable system extensions — none installed by default), `ujust` recipes + **niriblue Portal** (a GTK GUI front-end for them).
 
 ## Usage
 
@@ -28,6 +28,7 @@ sudo systemctl reboot
 - `build_files/build.sh` — all package installs and system setup.
 - `system_files/` — files copied into the image root (configs, repos, units, niri/DMS skel).
 - `Justfile` / `ujust` — build and helper recipes.
+- **niriblue Portal** — a GTK4 GUI for the `ujust` recipes (run `ujust portal` or launch "niriblue Portal" from the app menu). Adapted from the [Bazzite Portal](https://github.com/ublue-os/yafti-gtk); its tabs/actions live in `system_files/usr/share/niriblue/portal/portal.yml`.
 
 ## Disclaimer
 This is a personal project built for my own setup. It's public in case it's useful to someone, but it comes with no support, no guarantees, and no promise of stability.

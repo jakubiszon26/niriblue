@@ -6,6 +6,10 @@
 default:
     @just --justfile /usr/share/niriblue/just/niriblue.just --list
 
+# Open the niriblue Portal (GUI for these recipes)
+portal:
+    setsid niriblue-portal /usr/share/niriblue/portal/portal.yml >/dev/null 2>&1 &
+
 # Update everything: system image, flatpaks, sysexts, Nix/home-manager
 update:
     #!/usr/bin/bash

@@ -1,0 +1,34 @@
+<svg width="220" height="360" viewBox="0 0 220 360" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="shell" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%"  stop-color="#3aa0ff"/>
+      <stop offset="45%" stop-color="#1e7bff"/>
+      <stop offset="100%" stop-color="#0033cc"/>
+    </linearGradient>
+    <linearGradient id="core" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%"  stop-color="#bdfaff"/>
+      <stop offset="60%" stop-color="#36d6ff"/>
+      <stop offset="100%" stop-color="#00a2ff"/>
+    </linearGradient>
+    <filter id="glow" x="-40%" y="-40%" width="180%" height="180%">
+      <feGaussianBlur stdDeviation="6" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+
+  <!-- outer flame -->
+  <path filter="url(#glow)" fill="url(#shell)" d="
+    M110 22
+    C132 78 192 158 188 240
+    C186 298 156 338 110 338
+    C64 338 34 298 32 240
+    C28 158 88 78 110 22 Z"/>
+
+  <!-- inner core -->
+  <path fill="url(#core)" d="
+    M110 110
+    C122 140 156 188 153 238
+    C152 274 134 296 110 296
+    C86 296 68 274 67 238
+    C64 188 98 140 110 110 Z"/>
+</svg>

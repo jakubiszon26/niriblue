@@ -1,0 +1,66 @@
+# niriblue Portal configuration.
+#
+# A GUI front-end for the `ujust` recipes in
+# /usr/share/niriblue/just/niriblue.just. Each action either:
+#   * runs `script` directly in a kitty terminal (one-shot), or
+#   * opens a modal that first runs `status_script` headlessly and then shows
+#     the listed `options` (the option whose `id` matches the status string is
+#     highlighted).
+#
+# Keep this in sync with niriblue.just when recipes are added or removed.
+
+screens:
+  - title: "System"
+    actions:
+      - title: "Update System"
+        description: "Update everything: bootc image, Flatpaks, sysexts, Nix / home-manager."
+        script: "ujust update"
+      - title: "Roll Back"
+        description: "Stage the previous system deployment. Reboot to apply."
+        script: "ujust rollback"
+      - title: "Clean Up Storage"
+        description: "Prune containers, unused Flatpaks and old journal logs."
+        script: "ujust clean-system"
+      - title: "Device Info"
+        description: "Show system and hardware info (fastfetch)."
+        script: "ujust device-info"
+      - title: "Reboot to BIOS / UEFI"
+        description: "Reboot directly into the firmware setup screen."
+        script: "ujust bios"
+
+  - title: "Setup"
+    actions:
+      - title: "Home Manager (Nix dev tools)"
+        description: "One-time opt-in: seed and activate per-user home-manager."
+        script: "ujust setup-home-manager"
+      - title: "Virtualization (libvirt / KVM)"
+        description: "Add your user to libvirt/kvm and start libvirtd."
+        script: "ujust setup-virtualization"
+      - title: "Rootless Docker"
+        description: "Initialize rootless Docker for the current user (one-time)."
+        script: "ujust setup-docker-rootless"
+
+  - title: "AI"
+    actions:
+      - id: "ollama"
+        title: "Ollama (AMD ROCm)"
+        description: "Run Ollama in Docker on the GPU. Requires rootless Docker first."
+        status_script: |
+          if docker ps --format '{{.Names}}' 2>/dev/null | grep -qx ollama; then
+            echo remove
+          else
+            echo setup
+          fi
+        options:
+          - id: "setup"
+            label: "Install / Start Ollama"
+            script: "ujust setup-ollama"
+          - id: "remove"
+            label: "Remove Ollama"
+            script: "ujust remove-ollama"
+
+  - title: "Gaming"
+    actions:
+      - title: "Fix Proton / Wine Hang"
+        description: "Kill stuck wine/proton processes."
+        script: "ujust fix-proton-hang"
