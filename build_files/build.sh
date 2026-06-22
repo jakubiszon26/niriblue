@@ -53,6 +53,50 @@ dnf5 install -y microcode_ctl amd-ucode-firmware
 # networks ever appear (e.g. in the DankMaterialShell network widget).
 dnf5 install -y NetworkManager-wifi wpa_supplicant
 
+### Hardware services: peripherals that "just work" on a desktop image but are weak
+### deps the minimal bootc base omits (firmware updates, thermal, Bluetooth, printing,
+### scanning, mobile broadband, iDevice USB). Installed here so the image works on
+### arbitrary hardware out of the box, not only on the author's machine.
+
+# Firmware/BIOS updates via LVFS (fwupd). The refresh timer keeps the metadata current
+# so GNOME Software can surface device firmware updates; actual flashing stays manual.
+dnf5 install -y fwupd
+systemctl enable fwupd-refresh.timer
+
+# Intel thermal management. Without thermald thin laptops can throttle hard or run hot
+# because nothing applies the platform's passive thermal policy.
+dnf5 install -y thermald
+systemctl enable thermald.service
+
+# Bluetooth stack. bluez provides the daemon; PipeWire's built-in bluez5 SPA plugin +
+# the already-installed wireplumber handle A2DP audio (SBC/AAC). aptX/LDAC are not added
+# here (RPMFusion-only, patent-encumbered) -- can be layered later if needed.
+dnf5 install -y bluez bluez-tools
+systemctl enable bluetooth.service
+
+# Printing, driverless first: cups + cups-filters for the spooler/filters, ipp-usb for
+# driverless IPP-over-USB (most printers since ~2017), gutenprint-cups for older models,
+# cups-pk-helper so the desktop can manage printers via PolicyKit. cups.socket activates
+# cupsd on demand; ipp-usb is udev-activated per device.
+dnf5 install -y cups cups-filters cups-pk-helper ipp-usb gutenprint-cups
+systemctl enable cups.socket
+
+# Scanning, driverless first: sane-backends + sane-airscan (eSCL/WSD, works over the
+# same ipp-usb path as printing for modern all-in-ones). GUI front-end ships as a Flatpak.
+dnf5 install -y sane-backends sane-airscan
+
+# Mobile broadband / WWAN modems (some ThinkPads ship one). ModemManager is the NM
+# backend for cellular; mobile-broadband-provider-info supplies the APN database.
+dnf5 install -y ModemManager mobile-broadband-provider-info
+systemctl enable ModemManager.service
+
+# Apple device support over USB (tethering, file/photo access via gvfs).
+dnf5 install -y usbmuxd libimobiledevice
+
+# Realtime scheduling broker so PipeWire/clients can get RT priority under load
+# (rtkit-daemon is D-Bus activated; no explicit enable needed).
+dnf5 install -y rtkit
+
 ### Kernel: replace the Fedora kernel with CachyOS (COPR repos via system_files)
 
 # Stock kernel version, used below to drop its orphaned files after the swap
