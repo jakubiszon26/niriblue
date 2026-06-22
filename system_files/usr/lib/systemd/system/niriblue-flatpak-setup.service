@@ -1,6 +1,7 @@
 [Unit]
 Description=Install Flathub apps on first boot
-After=network-online.target
+# Ordered after the first-boot orchestrator (see niriblue-nix-setup.service for why).
+After=network-online.target niriblue-firstboot.service
 Wants=network-online.target
 ConditionPathExists=!/var/lib/niriblue/flatpak-setup.done
 

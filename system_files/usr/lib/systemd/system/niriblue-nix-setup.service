@@ -1,0 +1,16 @@
+[Unit]
+Description=Install upstream Nix on first boot (per-user dev-tooling layer)
+# Ordered after the first-boot orchestrator so the two never run the same install
+# concurrently on first boot. On later boots niriblue-firstboot is skipped (its condition
+# fails) and this unit acts as the per-boot retry net for anything not yet done.
+After=network-online.target niriblue-firstboot.service
+Wants=network-online.target
+ConditionPathExists=!/var/lib/niriblue/nix-setup.done
+
+[Service]
+Type=oneshot
+ExecStart=/usr/libexec/niriblue-nix-setup
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target

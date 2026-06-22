@@ -31,10 +31,29 @@ dnf5 install -y --allowerasing ffmpeg
 # Thunderbolt device authorization for the eGPU (bolt.service is D-Bus activated)
 dnf5 install -y bolt
 
-# Intel WiFi firmware: Fedora 44 split the iwlwifi firmware out of linux-firmware
-# into iwlwifi-mvm-firmware, pulled only as a weak dep that the bootc base omits.
-# Without it the AX201 has no firmware, iwlwifi never probes, and there is no wlan0.
-dnf5 install -y iwlwifi-mvm-firmware
+# Complete device firmware for general hardware support. Fedora 39+ stopped *requiring*
+# the firmware subpackages from linux-firmware: they attach as weak deps via
+# Supplements:modalias(), which the minimal bootc base does not honour. So on the base
+# image you get a stripped firmware set and any device whose blob is missing silently
+# fails to probe (this is why WiFi and audio each needed a reactive fix before). Since
+# this image is meant to run on other people's unknown hardware, pull the full consumer
+# device-firmware set up front instead of chasing devices one at a time.
+#
+# (The convenience meta `linux-firmware-all` only exists on newer Fedora, not F44, so we
+# list the subpackages explicitly. Datacenter NIC/switch firmware -- qed, netronome,
+# liquidio, mlxsw_spectrum, mrvlprestera -- is intentionally excluded: never on the
+# laptops/desktops this image targets.)
+dnf5 install -y \
+    iwlwifi-mvm-firmware iwlwifi-dvm-firmware iwlegacy-firmware \
+    atheros-firmware realtek-firmware mt7xxx-firmware brcmfmac-firmware \
+    libertas-firmware nxpwireless-firmware tiwilink-firmware \
+    cirrus-audio-firmware \
+    amd-gpu-firmware intel-gpu-firmware nvidia-gpu-firmware
+
+# CPU microcode. The Fedora kernel ships it via an early-boot initramfs cpio, but we swap
+# in the CachyOS kernel and build the initramfs by hand below, so install the microcode
+# packages explicitly to be sure dracut picks them up.
+dnf5 install -y microcode_ctl amd-ucode-firmware
 
 # NetworkManager WiFi support: fedora-bootc ships only the NetworkManager core, while
 # the WiFi device plugin (NetworkManager-wifi -> libnm-device-plugin-wifi.so) and the
@@ -43,7 +62,59 @@ dnf5 install -y iwlwifi-mvm-firmware
 # networks ever appear (e.g. in the DankMaterialShell network widget).
 dnf5 install -y NetworkManager-wifi wpa_supplicant
 
+### Hardware services: peripherals that "just work" on a desktop image but are weak
+### deps the minimal bootc base omits (firmware updates, thermal, Bluetooth, printing,
+### scanning, mobile broadband, iDevice USB). Installed here so the image works on
+### arbitrary hardware out of the box, not only on the author's machine.
+
+# Firmware/BIOS updates via LVFS (fwupd). The refresh timer keeps the metadata current
+# so GNOME Software can surface device firmware updates; actual flashing stays manual.
+dnf5 install -y fwupd
+systemctl enable fwupd-refresh.timer
+
+# Intel thermal management. Without thermald thin laptops can throttle hard or run hot
+# because nothing applies the platform's passive thermal policy.
+dnf5 install -y thermald
+systemctl enable thermald.service
+
+# Bluetooth stack. bluez provides the daemon; PipeWire's built-in bluez5 SPA plugin +
+# the already-installed wireplumber handle A2DP audio (SBC/AAC). aptX/LDAC are not added
+# here (RPMFusion-only, patent-encumbered) -- can be layered later if needed.
+dnf5 install -y bluez bluez-tools
+systemctl enable bluetooth.service
+
+# Printing, driverless first: cups + cups-filters for the spooler/filters, ipp-usb for
+# driverless IPP-over-USB (most printers since ~2017), gutenprint-cups for older models,
+# cups-pk-helper so the desktop can manage printers via PolicyKit. cups.socket activates
+# cupsd on demand; ipp-usb is udev-activated per device.
+dnf5 install -y cups cups-filters cups-pk-helper ipp-usb gutenprint-cups
+systemctl enable cups.socket
+
+# Scanning, driverless first: sane-backends + sane-airscan (eSCL/WSD, works over the
+# same ipp-usb path as printing for modern all-in-ones). GUI front-end ships as a Flatpak.
+dnf5 install -y sane-backends sane-airscan
+
+# Mobile broadband / WWAN modems (some ThinkPads ship one). ModemManager is the NM
+# backend for cellular; mobile-broadband-provider-info supplies the APN database.
+dnf5 install -y ModemManager mobile-broadband-provider-info
+systemctl enable ModemManager.service
+
+# Apple device support over USB (tethering, file/photo access via gvfs).
+dnf5 install -y usbmuxd libimobiledevice
+
+# Realtime scheduling broker so PipeWire/clients can get RT priority under load
+# (rtkit-daemon is D-Bus activated; no explicit enable needed).
+dnf5 install -y rtkit
+
 ### Kernel: replace the Fedora kernel with CachyOS (COPR repos via system_files)
+
+# Track the latest CachyOS kernel from the bieszczaders COPR rather than pinning a
+# version. Rationale: the COPR garbage-collects old builds (only the newest keeps its
+# binary RPMs), so a hard pin would break the daily build the moment upstream ships a
+# newer kernel and would force manual version bumps. Floating keeps the kernel current
+# automatically; if a given kernel build is broken the image build fails in CI and the
+# last good published image stays in place, so users never receive a broken kernel.
+# (Every published image is still itself immutable/reproducible by digest.)
 
 # Stock kernel version, used below to drop its orphaned files after the swap
 OLD_KVER="$(ls /usr/lib/modules)"
@@ -144,12 +215,14 @@ cp /ctx/assets/flame.svg /ctx/assets/flame_pixel.svg /usr/share/niriblue/assets/
 
 dnf5 -y install pipewire wireplumber pipewire-pulseaudio pipewire-alsa
 
-# Internal speaker firmware: the T14's HD-Audio (Intel TGL 8086:a0c8 + Realtek ALC
-# codec) is driven by the SOF DSP, which needs its DSP firmware + topology blobs
-# (/usr/lib/firmware/intel/sof{,-tplg}). These live in alsa-sof-firmware, a weak dep
-# the bootc base omits. Without it the SOF DSP never boots, the internal codec never
-# registers (/proc/asound/cards is empty), PipeWire falls back to "Dummy Output", and
-# only external sinks with their own audio controller (eGPU/HDMI) produce sound.
+# SOF DSP firmware for internal audio. Nearly all modern Intel laptops (Tiger Lake and
+# newer) and many recent AMD ones drive their internal codec through the SOF DSP, which
+# needs its firmware + topology blobs (/usr/lib/firmware/intel/sof{,-tplg}). These live
+# in alsa-sof-firmware -- a separate package from linux-firmware(-all), shipped as a weak
+# dep the bootc base omits. Without it the DSP never boots, the codec never registers
+# (/proc/asound/cards empty), PipeWire falls back to "Dummy Output", and only external
+# sinks with their own controller (eGPU/HDMI) produce sound. (Speaker-amp firmware for
+# the Cirrus CS35L41/56 amps found on newer laptops comes from cirrus-audio-firmware above.)
 dnf5 -y install alsa-sof-firmware
 
 # XDG portals (gtk fallback, gnome for screencast) + secret service
@@ -193,7 +266,7 @@ rpm --import https://packages.microsoft.com/keys/microsoft.asc
 dnf5 -y install \
     kitty nautilus \
     discord \
-    distrobox kde-connect \
+    kde-connect \
     wine winetricks gamemode vulkan-tools \
     file-roller unzip 7zip unrar \
     fprintd fprintd-pam \
@@ -235,14 +308,46 @@ else
     printf '\n[Daemon]\nDefaultBackend=bootc\n' >> /etc/PackageKit/PackageKit.conf
 fi
 
-# Homebrew build dependencies
-dnf5 -y install git procps-ng file gcc gcc-c++ make
+# git stays in the image: Nix flakes / home-manager (the dev-tooling layer) expect it in
+# PATH. The rest of the old Homebrew build toolchain (gcc/make/...) is gone -- per-user
+# build tooling now comes from Nix, not a system-wide compiler set.
+dnf5 -y install git
 
-chmod 0755 /usr/libexec/niriblue-flatpak-setup /usr/libexec/niriblue-brew-setup
+chmod 0755 /usr/libexec/niriblue-flatpak-setup
 
 systemctl enable niriblue-flatpak-setup.service
-systemctl enable niriblue-brew-setup.service
 systemctl enable systemd-sysext.service
+
+### Nix (per-user dev-tooling layer; see LAYERING.md). Upstream Nix is installed at
+### first boot by niriblue-nix-setup into a /var-backed store -- it cannot be baked into
+### the image because /nix is machine-local state on bootc, not part of the image.
+
+# Empty mountpoint baked into the image; niriblue-nix-setup bind-mounts the /var store here.
+mkdir -p /nix
+
+# semanage (policycoreutils-python-utils) is needed by niriblue-nix-setup to label the
+# Nix store for SELinux; restorecon ships in policycoreutils (already present).
+dnf5 -y install policycoreutils-python-utils
+
+chmod 0755 /usr/libexec/niriblue-nix-setup
+systemctl enable niriblue-nix-setup.service
+
+### sysexts (add/removable native FHS apps; see LAYERING.md). systemd-sysext.service is
+### already enabled above. niriblue-sysext-setup bootstraps sysexts-manager and adds the
+### vscode + tailscale sysexts from the community channel at first boot -- they live in
+### /var/lib/extensions (machine state), so they can't be baked into the image. In this
+### image they run ALONGSIDE the RPM vscode/tailscale (sysext overlays /usr); the RPMs
+### are dropped in a later commit only after this path is verified on a real boot.
+chmod 0755 /usr/libexec/niriblue-sysext-setup
+systemctl enable niriblue-sysext-setup.service
+
+### First-boot progress gate (see LAYERING.md). niriblue-firstboot runs the three setup
+### steps above in sequence on the very first boot, with on-screen progress on the
+### Plymouth splash, and is ordered before greetd so the desktop does not appear until it
+### finishes. It always releases the gate (so no network never locks the user out); the
+### standalone setup units above remain the per-boot retry net for anything unfinished.
+chmod 0755 /usr/libexec/niriblue-firstboot
+systemctl enable niriblue-firstboot.service
 
 ### Networking: Tailscale (repo shipped via system_files/etc/yum.repos.d/tailscale.repo)
 

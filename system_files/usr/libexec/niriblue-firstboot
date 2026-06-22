@@ -1,0 +1,51 @@
+#!/usr/bin/bash
+# First-boot setup orchestrator with a visible progress screen.
+#
+# Purpose: on the very first boot, drive the per-user/runtime install steps (Flatpak
+# GUI apps, vscode/tailscale sysexts, Nix) IN SEQUENCE while the Plymouth boot splash is
+# still up, so the user sees "what is being installed" instead of being dropped onto a
+# half-populated desktop. The greeter (greetd) is ordered after this unit, so the
+# desktop does not appear until this finishes (see niriblue-firstboot.service).
+#
+# Safety: this ALWAYS releases the gate (writes the done-marker) even if a step fails or
+# times out, so the user is never locked out (e.g. no network on first boot). Anything
+# that did not complete is retried on every later boot by the standalone
+# niriblue-{flatpak,sysext,nix}-setup units, which are ordered after this one so they do
+# not race it here. Each underlying step is idempotent and marker-guarded.
+set -uo pipefail
+
+MARKER=/var/lib/niriblue/firstboot.done
+[ -e "${MARKER}" ] && exit 0
+
+# --- Plymouth helpers (all no-ops if there is no running splash) -------------------
+plymouth_active() { plymouth --ping >/dev/null 2>&1; }
+say() {
+    echo "niriblue-firstboot: $*"
+    plymouth_active && plymouth display-message --text="$*" 2>/dev/null || true
+}
+progress() { plymouth_active && plymouth system-update --progress="$1" 2>/dev/null || true; }
+
+say "Pierwsze uruchomienie systemu niriblue – trwa konfiguracja, proszę czekać…"
+progress 0
+
+# Step 1/3: Flatpak GUI apps (longest pole; capped so the splash is not stuck forever).
+say "Instaluję aplikacje (Flatpak) – krok 1/3…"
+progress 10
+timeout 900 /usr/libexec/niriblue-flatpak-setup || say "Aplikacje dokończą się w tle."
+progress 45
+
+# Step 2/3: vscode + tailscale system extensions.
+say "Instaluję rozszerzenia systemu: VS Code, Tailscale – krok 2/3…"
+timeout 300 /usr/libexec/niriblue-sysext-setup || say "Rozszerzenia dokończą się w tle."
+progress 65
+
+# Step 3/3: Nix (per-user dev tooling).
+say "Instaluję Nix (narzędzia deweloperskie) – krok 3/3…"
+timeout 600 /usr/libexec/niriblue-nix-setup || say "Nix dokończy się w tle."
+progress 100
+
+say "Konfiguracja zakończona. Uruchamiam pulpit…"
+
+# Always release so the user reaches the desktop; leftovers are retried per-boot.
+mkdir -p "$(dirname "${MARKER}")"
+touch "${MARKER}"

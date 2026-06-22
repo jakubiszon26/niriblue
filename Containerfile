@@ -1,3 +1,8 @@
+# niriblue software layering (IMAGE / systemd-sysext / Nix / Flatpak) is documented in
+# LAYERING.md at the repo root. Read it before adding software here: only foundational,
+# early-boot, kernel/driver and compositor pieces belong in this image; late-boot native
+# apps go to sysexts, per-user CLI/dev tooling to Nix, and GUI apps to Flatpak.
+
 # Allow build scripts to be referenced without being copied into the final image
 FROM scratch AS ctx
 COPY build_files /
