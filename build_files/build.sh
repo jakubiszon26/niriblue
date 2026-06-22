@@ -31,10 +31,20 @@ dnf5 install -y --allowerasing ffmpeg
 # Thunderbolt device authorization for the eGPU (bolt.service is D-Bus activated)
 dnf5 install -y bolt
 
-# Intel WiFi firmware: Fedora 44 split the iwlwifi firmware out of linux-firmware
-# into iwlwifi-mvm-firmware, pulled only as a weak dep that the bootc base omits.
-# Without it the AX201 has no firmware, iwlwifi never probes, and there is no wlan0.
-dnf5 install -y iwlwifi-mvm-firmware
+# Complete device firmware for general hardware support. Fedora 39+ stopped *requiring*
+# the firmware subpackages from linux-firmware (iwlwifi/atheros/realtek/mt7xxx/brcmfmac,
+# the cirrus speaker-amp blobs, GPU firmware): they attach as weak deps via
+# Supplements:modalias(), which the minimal bootc base does not honour. So on the base
+# image you get a stripped firmware set and any device whose blob is missing silently
+# fails to probe (this is why WiFi and audio each needed a reactive fix before). Since
+# this image is meant to run on other people's unknown hardware, pull the whole set in
+# one shot instead of chasing devices one at a time.
+dnf5 install -y linux-firmware-all
+
+# CPU microcode. The Fedora kernel ships it via an early-boot initramfs cpio, but we swap
+# in the CachyOS kernel and build the initramfs by hand below, so install the microcode
+# packages explicitly to be sure dracut picks them up.
+dnf5 install -y microcode_ctl amd-ucode-firmware
 
 # NetworkManager WiFi support: fedora-bootc ships only the NetworkManager core, while
 # the WiFi device plugin (NetworkManager-wifi -> libnm-device-plugin-wifi.so) and the
@@ -144,12 +154,14 @@ cp /ctx/assets/flame.svg /ctx/assets/flame_pixel.svg /usr/share/niriblue/assets/
 
 dnf5 -y install pipewire wireplumber pipewire-pulseaudio pipewire-alsa
 
-# Internal speaker firmware: the T14's HD-Audio (Intel TGL 8086:a0c8 + Realtek ALC
-# codec) is driven by the SOF DSP, which needs its DSP firmware + topology blobs
-# (/usr/lib/firmware/intel/sof{,-tplg}). These live in alsa-sof-firmware, a weak dep
-# the bootc base omits. Without it the SOF DSP never boots, the internal codec never
-# registers (/proc/asound/cards is empty), PipeWire falls back to "Dummy Output", and
-# only external sinks with their own audio controller (eGPU/HDMI) produce sound.
+# SOF DSP firmware for internal audio. Nearly all modern Intel laptops (Tiger Lake and
+# newer) and many recent AMD ones drive their internal codec through the SOF DSP, which
+# needs its firmware + topology blobs (/usr/lib/firmware/intel/sof{,-tplg}). These live
+# in alsa-sof-firmware -- a separate package from linux-firmware(-all), shipped as a weak
+# dep the bootc base omits. Without it the DSP never boots, the codec never registers
+# (/proc/asound/cards empty), PipeWire falls back to "Dummy Output", and only external
+# sinks with their own controller (eGPU/HDMI) produce sound. (Speaker-amp firmware for
+# the Cirrus CS35L41/56 amps found on newer laptops comes from linux-firmware-all above.)
 dnf5 -y install alsa-sof-firmware
 
 # XDG portals (gtk fallback, gnome for screencast) + secret service
