@@ -99,6 +99,17 @@ dnf5 install -y rtkit
 
 ### Kernel: replace the Fedora kernel with CachyOS (COPR repos via system_files)
 
+# Pin the CachyOS kernel to an exact NEVR so builds are reproducible (no floating
+# "latest" tag). NOTE: the bieszczaders COPR garbage-collects old builds -- typically
+# only the newest kernel-cachyos build keeps its binary RPMs. When upstream ships a
+# newer kernel this pin will stop resolving and the (daily) build fails with
+# "no package matching kernel-cachyos-<ver>". That is the intended, visible signal to
+# bump this single line to the current version after reviewing the changelog; query it
+# with:
+#   curl -s https://download.copr.fedorainfracloud.org/results/bieszczaders/kernel-cachyos/fedora-44-x86_64/repodata/repomd.xml
+# (then read the primary.xml it points at). Renovate does not track COPR, so this is manual.
+KERNEL_CACHYOS_VERSION="7.0.12-cachyos1.fc44"
+
 # Stock kernel version, used below to drop its orphaned files after the swap
 OLD_KVER="$(ls /usr/lib/modules)"
 
@@ -108,7 +119,7 @@ dnf5 -y remove kernel kernel-core kernel-modules kernel-modules-core
 # The kernel %posttrans initramfs hook fails inside a container build (modules.dep
 # isn't ready before the hook runs), which makes dnf5 report failure even though the
 # package installs. Tolerate it, assert the install, then build the initramfs manually.
-dnf5 -y install kernel-cachyos || true
+dnf5 -y install "kernel-cachyos-${KERNEL_CACHYOS_VERSION}" || true
 rpm -q kernel-cachyos-core
 
 KVER="$(rpm -q kernel-cachyos-core --qf '%{VERSION}-%{RELEASE}.%{ARCH}')"
