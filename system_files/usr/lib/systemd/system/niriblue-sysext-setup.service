@@ -1,0 +1,13 @@
+[Unit]
+Description=Bootstrap sysexts-manager + niriblue sysexts (vscode, tailscale) on first boot
+After=network-online.target systemd-sysext.service
+Wants=network-online.target
+ConditionPathExists=!/var/lib/niriblue/sysext-setup.done
+
+[Service]
+Type=oneshot
+ExecStart=/usr/libexec/niriblue-sysext-setup
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target

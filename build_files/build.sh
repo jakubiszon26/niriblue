@@ -325,6 +325,15 @@ dnf5 -y install policycoreutils-python-utils
 chmod 0755 /usr/libexec/niriblue-nix-setup
 systemctl enable niriblue-nix-setup.service
 
+### sysexts (add/removable native FHS apps; see LAYERING.md). systemd-sysext.service is
+### already enabled above. niriblue-sysext-setup bootstraps sysexts-manager and adds the
+### vscode + tailscale sysexts from the community channel at first boot -- they live in
+### /var/lib/extensions (machine state), so they can't be baked into the image. In this
+### image they run ALONGSIDE the RPM vscode/tailscale (sysext overlays /usr); the RPMs
+### are dropped in a later commit only after this path is verified on a real boot.
+chmod 0755 /usr/libexec/niriblue-sysext-setup
+systemctl enable niriblue-sysext-setup.service
+
 ### Networking: Tailscale (repo shipped via system_files/etc/yum.repos.d/tailscale.repo)
 
 rpm --import https://pkgs.tailscale.com/stable/fedora/repo.gpg
