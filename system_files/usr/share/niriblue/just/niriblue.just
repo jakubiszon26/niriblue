@@ -6,7 +6,7 @@
 default:
     @just --justfile /usr/share/niriblue/just/niriblue.just --list
 
-# Update everything: system image, flatpaks, Homebrew, distrobox containers
+# Update everything: system image, flatpaks, Homebrew
 update:
     #!/usr/bin/bash
     set -uo pipefail
@@ -17,10 +17,6 @@ update:
     if [ -x /var/home/linuxbrew/.linuxbrew/bin/brew ]; then
         echo ">> Homebrew"
         /var/home/linuxbrew/.linuxbrew/bin/brew update && /var/home/linuxbrew/.linuxbrew/bin/brew upgrade || true
-    fi
-    if command -v distrobox >/dev/null; then
-        echo ">> Distrobox"
-        distrobox upgrade --all || true
     fi
 
 # Reclaim space: prune containers, unused flatpaks, and old journal logs

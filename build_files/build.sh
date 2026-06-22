@@ -260,7 +260,7 @@ rpm --import https://packages.microsoft.com/keys/microsoft.asc
 dnf5 -y install \
     kitty nautilus \
     discord \
-    distrobox kde-connect \
+    kde-connect \
     wine winetricks gamemode vulkan-tools \
     file-roller unzip 7zip unrar \
     fprintd fprintd-pam \
