@@ -311,6 +311,20 @@ systemctl enable niriblue-flatpak-setup.service
 systemctl enable niriblue-brew-setup.service
 systemctl enable systemd-sysext.service
 
+### Nix (per-user dev-tooling layer; see LAYERING.md). Upstream Nix is installed at
+### first boot by niriblue-nix-setup into a /var-backed store -- it cannot be baked into
+### the image because /nix is machine-local state on bootc, not part of the image.
+
+# Empty mountpoint baked into the image; niriblue-nix-setup bind-mounts the /var store here.
+mkdir -p /nix
+
+# semanage (policycoreutils-python-utils) is needed by niriblue-nix-setup to label the
+# Nix store for SELinux; restorecon ships in policycoreutils (already present).
+dnf5 -y install policycoreutils-python-utils
+
+chmod 0755 /usr/libexec/niriblue-nix-setup
+systemctl enable niriblue-nix-setup.service
+
 ### Networking: Tailscale (repo shipped via system_files/etc/yum.repos.d/tailscale.repo)
 
 rpm --import https://pkgs.tailscale.com/stable/fedora/repo.gpg

@@ -1,0 +1,13 @@
+[Unit]
+Description=Install upstream Nix on first boot (per-user dev-tooling layer)
+After=network-online.target
+Wants=network-online.target
+ConditionPathExists=!/var/lib/niriblue/nix-setup.done
+
+[Service]
+Type=oneshot
+ExecStart=/usr/libexec/niriblue-nix-setup
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target

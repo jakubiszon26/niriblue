@@ -1,0 +1,87 @@
+#!/usr/bin/bash
+# First-boot install of upstream Nix (multi-user daemon) for the per-user dev-tooling
+# layer -- this is what replaces distrobox/Homebrew on niriblue.
+#
+# We use the NixOS community fork of the Determinate nix-installer (pinned). The fork
+# installs UPSTREAM Nix (not "Determinate Nix", which the hosted installer now forces)
+# and auto-detects the ostree/bootc layout: it puts the store under /var and bind-mounts
+# it onto /nix via a systemd mount unit, so the store is machine-local state that
+# survives image (bootc) upgrades. /nix itself is an empty mountpoint baked into the
+# image.
+#
+# Retries each boot until it succeeds (e.g. a first boot with no network), mirroring
+# niriblue-flatpak-setup. SELinux note: the one-time install is run with SELinux
+# temporarily Permissive (the proven approach for Nix-on-ostree), then restored to
+# Enforcing and the store relabelled, so the running system stays Enforcing.
+set -uo pipefail
+
+MARKER=/var/lib/niriblue/nix-setup.done
+NIX_INSTALLER_VERSION="2.34.6"   # NixOS/nix-installer release (upstream Nix)
+ARCH="x86_64-linux"
+
+# Already installed (installer drops a receipt)? Mark done and exit.
+if [ -e /nix/receipt.json ] || [ -e /nix/var/nix ]; then
+    mkdir -p "$(dirname "${MARKER}")"
+    touch "${MARKER}"
+    exit 0
+fi
+
+installer="$(mktemp)"
+cleanup() { rm -f "${installer}"; }
+trap cleanup EXIT
+
+# Download needs connectivity; if it fails there is no network yet -> retry next boot.
+if ! curl -fsSL \
+        "https://github.com/NixOS/nix-installer/releases/download/${NIX_INSTALLER_VERSION}/nix-installer-${ARCH}" \
+        -o "${installer}"; then
+    echo "nix-setup: installer download failed (no network?), retrying next boot" >&2
+    exit 0
+fi
+chmod +x "${installer}"
+
+# Pre-seed SELinux file contexts for the Nix store BEFORE installing, covering every
+# physical path the installer might use on an ostree system (/nix via the mount, plus
+# the /var backing store under either /var/nix or /var/lib/nix). Mapping store paths to
+# stock types is the documented Nix-on-SELinux approach (matthewpi gist /
+# dnkmmr69420/nix-installer-scripts). Lines are idempotent; ignore "already defined".
+if command -v semanage >/dev/null 2>&1; then
+    for prefix in "" "/var" "/var/lib"; do
+        semanage fcontext -a -t etc_t                "${prefix}/nix/store/[^/]+/etc(/.*)?"                       2>/dev/null || true
+        semanage fcontext -a -t lib_t                "${prefix}/nix/store/[^/]+/lib(/.*)?"                       2>/dev/null || true
+        semanage fcontext -a -t systemd_unit_file_t  "${prefix}/nix/store/[^/]+/lib/systemd/system(/.*)?"       2>/dev/null || true
+        semanage fcontext -a -t man_t                "${prefix}/nix/store/[^/]+/man(/.*)?"                       2>/dev/null || true
+        semanage fcontext -a -t bin_t                "${prefix}/nix/store/[^/]+/s?bin(/.*)?"                     2>/dev/null || true
+        semanage fcontext -a -t usr_t                "${prefix}/nix/store/[^/]+/share(/.*)?"                     2>/dev/null || true
+        semanage fcontext -a -t var_run_t            "${prefix}/nix/var/nix/daemon-socket(/.*)?"                2>/dev/null || true
+        semanage fcontext -a -t usr_t                "${prefix}/nix/var/nix/profiles(/per-user/[^/]+)?/[^/]+"   2>/dev/null || true
+    done
+fi
+
+# Relax enforcement only for the duration of the install, then always restore it,
+# whatever happens (the trap runs on every exit path).
+PREV_ENFORCE="$(getenforce 2>/dev/null || echo Disabled)"
+restore_enforce() {
+    [ "${PREV_ENFORCE}" = "Enforcing" ] && setenforce Enforcing 2>/dev/null || true
+    cleanup
+}
+trap restore_enforce EXIT
+[ "${PREV_ENFORCE}" = "Enforcing" ] && setenforce Permissive 2>/dev/null || true
+
+# --no-confirm: non-interactive. The installer detects ostree and sets up the
+# /var-backed store, the /nix mount unit, and the nix-daemon service itself.
+if ! "${installer}" install --no-confirm; then
+    echo "nix-setup: installer failed, retrying next boot" >&2
+    exit 1
+fi
+
+# Relabel the freshly written store to the contexts seeded above before re-enforcing.
+restorecon -RF /nix 2>/dev/null || true
+
+# Ensure flakes + the new nix CLI are on (upstream Nix does not enable them by default).
+if [ -f /etc/nix/nix.conf ] && ! grep -q 'experimental-features' /etc/nix/nix.conf; then
+    printf '\nexperimental-features = nix-command flakes\n' >> /etc/nix/nix.conf
+fi
+
+mkdir -p "$(dirname "${MARKER}")"
+touch "${MARKER}"
+echo "nix-setup: upstream Nix installed"
