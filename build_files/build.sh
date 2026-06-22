@@ -265,13 +265,12 @@ sed -i 's|^Exec=gamescope-session$|Exec=niriblue-gamescope-session|' \
 # (see LAYERING.md), so users who do not want them are not forced to carry them.
 dnf5 -y install \
     kitty nautilus \
-    discord \
     kde-connect \
     wine winetricks gamemode vulkan-tools \
     file-roller unzip 7zip unrar \
     fprintd fprintd-pam \
     gnome-disk-utility gparted filelight \
-    fuse fuse-libs flatpak fastfetch \
+    fuse fuse-libs flatpak \
     papirus-icon-theme \
     zen-browser
 
@@ -281,17 +280,6 @@ authselect enable-feature with-fingerprint
 # Apply the default PDF handler from mimeapps.list
 update-desktop-database /usr/share/applications || true
 
-# JetBrains Toolbox has no RPM; 3.x ships as a directory (bin/ + jbr/), not a single
-# AppImage. Stage it under /usr/lib and link the launcher into PATH; Toolbox relocates
-# itself to $HOME and self-updates on first run.
-curl -fsSL "https://data.services.jetbrains.com/products/download?code=TBA&platform=linux" -o /tmp/jbtoolbox.tar.gz
-mkdir -p /tmp/jbtoolbox
-tar -xzf /tmp/jbtoolbox.tar.gz -C /tmp/jbtoolbox
-TBX_SRC="$(find /tmp/jbtoolbox -maxdepth 1 -mindepth 1 -type d | head -1)"
-mkdir -p /usr/lib/jetbrains-toolbox
-cp -a "${TBX_SRC}/." /usr/lib/jetbrains-toolbox/
-ln -sf /usr/lib/jetbrains-toolbox/bin/jetbrains-toolbox /usr/bin/jetbrains-toolbox
-rm -rf /tmp/jbtoolbox /tmp/jbtoolbox.tar.gz
 
 ### Software center: GNOME Software + PackageKit-bootc backend
 #

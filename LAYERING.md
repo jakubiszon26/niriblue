@@ -41,7 +41,14 @@ sysext (e.g. `tailscaled`) is fine because it is enabled/started late, not at ea
 ### 3. Nix — per-user profile (upstream Nix + home-manager)
 Self-contained CLI / dev tooling, declarative and per-user, no image rebuild. **This
 replaces distrobox and Homebrew.** Installed at first boot by `niriblue-nix-setup` into a
-`/var`-backed store mounted at `/nix` (survives bootc upgrades).
+`/var`-backed store mounted at `/nix` (survives bootc upgrades). `niriblue-nix-setup` also
+turns on `nix-command` + `flakes` (in `/etc/nix/nix.custom.conf`), so flakes work out of
+the box.
+
+Each user opts into home-manager once with `ujust setup-home-manager`: it seeds the
+`/etc/skel` starter (also into accounts that predate it), fills in the account, and runs
+the first `home-manager switch`. After that, edit `~/.config/home-manager/home.nix` and
+re-run `home-manager switch --flake ~/.config/home-manager#niriblue` (or `ujust update`).
 
 ### 4. Flatpak — GUI apps
 Sandboxed graphical applications. Flathub + the app list are set up on first boot by
@@ -92,12 +99,7 @@ bootc deployments. Consequences:
 ### home-manager starter only reaches NEW accounts
 The starter under `/etc/skel/.config/home-manager/` is copied by `useradd`, so it only
 lands in homes of accounts created **after** it shipped. An **existing** `/var/home`
-account (created on an earlier image) will not have it. To seed an existing home:
-
-```bash
-mkdir -p ~/.config/home-manager
-cp -n /etc/skel/.config/home-manager/{flake.nix,home.nix} ~/.config/home-manager/
-# edit home.nix: set home.username / home.homeDirectory to your account, then:
-home-manager switch --flake ~/.config/home-manager#niriblue
-```
+account (created on an earlier image) will not have it. `ujust setup-home-manager` handles
+both cases: it `cp -n`'s the starter from `/etc/skel` if missing, fills in the account,
+and runs the first switch — so existing accounts just run the same command.
 

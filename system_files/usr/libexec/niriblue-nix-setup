@@ -77,9 +77,25 @@ fi
 # Relabel the freshly written store to the contexts seeded above before re-enforcing.
 restorecon -RF /nix 2>/dev/null || true
 
-# Ensure flakes + the new nix CLI are on (upstream Nix does not enable them by default).
-if [ -f /etc/nix/nix.conf ] && ! grep -q 'experimental-features' /etc/nix/nix.conf; then
-    printf '\nexperimental-features = nix-command flakes\n' >> /etc/nix/nix.conf
+# Ensure flakes + the new nix CLI are enabled (upstream Nix ships neither on by default).
+# The NixOS installer writes `extra-experimental-features = nix-command` into
+# /etc/nix/nix.conf and an (empty) `!include`d /etc/nix/nix.custom.conf for local
+# overrides. Append to that include with the additive `extra-` form, so nix-command stays
+# on and we never fight the generated nix.conf.
+#
+# Do NOT grep nix.conf for "experimental-features": the installer's own `nix-command`
+# line matches that substring, so the old guard saw a match and never actually added
+# flakes -- which is why flakes ended up off despite this step "running".
+NIX_CUSTOM=/etc/nix/nix.custom.conf
+if [ -f /etc/nix/nix.conf ]; then
+    if [ ! -f "${NIX_CUSTOM}" ]; then
+        touch "${NIX_CUSTOM}"
+        grep -q 'include nix.custom.conf' /etc/nix/nix.conf || \
+            printf '\n!include nix.custom.conf\n' >> /etc/nix/nix.conf
+    fi
+    grep -q 'flakes' "${NIX_CUSTOM}" || \
+        printf 'extra-experimental-features = nix-command flakes\n' >> "${NIX_CUSTOM}"
+    systemctl restart nix-daemon.service 2>/dev/null || true
 fi
 
 mkdir -p "$(dirname "${MARKER}")"

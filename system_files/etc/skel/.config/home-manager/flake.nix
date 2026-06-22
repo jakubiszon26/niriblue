@@ -6,9 +6,9 @@
   # earlier image) will NOT have it -- see LAYERING.md for the one-liner to drop it
   # into an existing home.
   #
-  # First use:
-  #   1) edit home.nix (set home.username / home.homeDirectory to your account)
-  #   2) home-manager switch --flake ~/.config/home-manager#niriblue
+  # First use: run `ujust setup-home-manager` -- it fills in your account and runs the
+  # first activation for you. After that, edit home.nix and apply changes with:
+  #   home-manager switch --flake ~/.config/home-manager#niriblue
   description = "niriblue home-manager configuration";
 
   inputs = {

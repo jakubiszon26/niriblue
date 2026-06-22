@@ -27,6 +27,26 @@ update:
         home-manager switch --flake "$HOME/.config/home-manager#niriblue" || true
     fi
 
+# Set up home-manager for the current user (one-time; opt-in dev-tooling layer)
+setup-home-manager:
+    #!/usr/bin/bash
+    set -euo pipefail
+    if ! command -v nix >/dev/null; then
+        echo "Nix is not installed yet -- first-boot setup may still be running."
+        echo "Check it with:  systemctl status niriblue-nix-setup"
+        exit 1
+    fi
+    cfg="$HOME/.config/home-manager"
+    mkdir -p "$cfg"
+    # Seed the starter for accounts that predate it (/etc/skel only reaches NEW accounts).
+    cp -n /etc/skel/.config/home-manager/flake.nix "$cfg/flake.nix" 2>/dev/null || true
+    cp -n /etc/skel/.config/home-manager/home.nix  "$cfg/home.nix"  2>/dev/null || true
+    # Fill in this account (replaces the CHANGEME placeholder; a no-op once it is set).
+    sed -i "s/CHANGEME/$USER/g" "$cfg/home.nix"
+    echo ">> Activating home-manager (first run downloads nixpkgs + home-manager)…"
+    nix run github:nix-community/home-manager -- switch -b backup --flake "$cfg#niriblue"
+    echo "Done. Edit ~/.config/home-manager/home.nix, then: home-manager switch --flake ~/.config/home-manager#niriblue"
+
 # Reclaim space: prune containers, unused flatpaks, and old journal logs
 clean-system:
     #!/usr/bin/bash

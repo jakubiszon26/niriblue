@@ -1,7 +1,7 @@
 { pkgs, ... }:
 {
-  # Set these to your account before the first `home-manager switch`.
-  # On bootc, home directories live under /var/home.
+  # `ujust setup-home-manager` fills in the CHANGEME placeholder with your account on the
+  # first run, so you normally do not touch these. On bootc, homes live under /var/home.
   home.username = "CHANGEME";
   home.homeDirectory = "/var/home/CHANGEME";
 
