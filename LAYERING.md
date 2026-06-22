@@ -11,8 +11,8 @@ Foundational, early-boot, kernel and driver-level pieces, and the desktop shell 
 Anything that must exist before/while userspace comes up, or that cannot be a late-boot
 `/usr` overlay, belongs here.
 
-Examples in this image: the CachyOS **kernel** (pinned), **device firmware**
-(`linux-firmware-all`) + microcode, **niri** + **DankMaterialShell** + greeter, XDG
+Examples in this image: the CachyOS **kernel**, the full **device-firmware** set +
+microcode, **niri** + **DankMaterialShell** + greeter, XDG
 **portals**, **eGPU**/Thunderbolt bits (`bolt`, kargs), audio stack, the hardware
 daemons (fwupd/thermald/bluez/cups/sane/ModemManager), the Steam/gamescope session,
 `libvirt`. These need `/etc` and units present at early boot and/or ship kernel modules,

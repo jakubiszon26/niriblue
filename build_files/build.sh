@@ -32,14 +32,23 @@ dnf5 install -y --allowerasing ffmpeg
 dnf5 install -y bolt
 
 # Complete device firmware for general hardware support. Fedora 39+ stopped *requiring*
-# the firmware subpackages from linux-firmware (iwlwifi/atheros/realtek/mt7xxx/brcmfmac,
-# the cirrus speaker-amp blobs, GPU firmware): they attach as weak deps via
+# the firmware subpackages from linux-firmware: they attach as weak deps via
 # Supplements:modalias(), which the minimal bootc base does not honour. So on the base
 # image you get a stripped firmware set and any device whose blob is missing silently
 # fails to probe (this is why WiFi and audio each needed a reactive fix before). Since
-# this image is meant to run on other people's unknown hardware, pull the whole set in
-# one shot instead of chasing devices one at a time.
-dnf5 install -y linux-firmware-all
+# this image is meant to run on other people's unknown hardware, pull the full consumer
+# device-firmware set up front instead of chasing devices one at a time.
+#
+# (The convenience meta `linux-firmware-all` only exists on newer Fedora, not F44, so we
+# list the subpackages explicitly. Datacenter NIC/switch firmware -- qed, netronome,
+# liquidio, mlxsw_spectrum, mrvlprestera -- is intentionally excluded: never on the
+# laptops/desktops this image targets.)
+dnf5 install -y \
+    iwlwifi-mvm-firmware iwlwifi-dvm-firmware iwlegacy-firmware \
+    atheros-firmware realtek-firmware mt7xxx-firmware brcmfmac-firmware \
+    libertas-firmware nxpwireless-firmware tiwilink-firmware \
+    cirrus-audio-firmware \
+    amd-gpu-firmware intel-gpu-firmware nvidia-gpu-firmware
 
 # CPU microcode. The Fedora kernel ships it via an early-boot initramfs cpio, but we swap
 # in the CachyOS kernel and build the initramfs by hand below, so install the microcode
@@ -213,7 +222,7 @@ dnf5 -y install pipewire wireplumber pipewire-pulseaudio pipewire-alsa
 # dep the bootc base omits. Without it the DSP never boots, the codec never registers
 # (/proc/asound/cards empty), PipeWire falls back to "Dummy Output", and only external
 # sinks with their own controller (eGPU/HDMI) produce sound. (Speaker-amp firmware for
-# the Cirrus CS35L41/56 amps found on newer laptops comes from linux-firmware-all above.)
+# the Cirrus CS35L41/56 amps found on newer laptops comes from cirrus-audio-firmware above.)
 dnf5 -y install alsa-sof-firmware
 
 # XDG portals (gtk fallback, gnome for screencast) + secret service
