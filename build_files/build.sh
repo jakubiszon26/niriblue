@@ -341,6 +341,14 @@ systemctl enable niriblue-nix-setup.service
 chmod 0755 /usr/libexec/niriblue-sysext-setup
 systemctl enable niriblue-sysext-setup.service
 
+### First-boot progress gate (see LAYERING.md). niriblue-firstboot runs the three setup
+### steps above in sequence on the very first boot, with on-screen progress on the
+### Plymouth splash, and is ordered before greetd so the desktop does not appear until it
+### finishes. It always releases the gate (so no network never locks the user out); the
+### standalone setup units above remain the per-boot retry net for anything unfinished.
+chmod 0755 /usr/libexec/niriblue-firstboot
+systemctl enable niriblue-firstboot.service
+
 ### Networking: Tailscale (repo shipped via system_files/etc/yum.repos.d/tailscale.repo)
 
 rpm --import https://pkgs.tailscale.com/stable/fedora/repo.gpg

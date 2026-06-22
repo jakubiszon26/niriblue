@@ -49,6 +49,24 @@ Sandboxed graphical applications. Flathub + the app list are set up on first boo
 | CLI / dev tool, per-user, declarative | **Nix** |
 | Sandboxed GUI app | **Flatpak** |
 
+## First boot
+
+The sysext, Nix and Flatpak layers install at **first boot**, not at image build (they
+live in `/var`, which is machine-local state on bootc). `niriblue-firstboot` runs the
+three steps in sequence while the Plymouth splash is still up and **before the greeter**,
+so the desktop only appears once setup is done, with on-screen progress.
+
+It is resilient by design:
+
+- It **always** releases to the desktop (even if a step fails or there is no network on
+  first boot) — you are never locked out.
+- Anything unfinished is retried on **every later boot** by the standalone
+  `niriblue-{flatpak,sysext,nix}-setup.service` units (idempotent, marker-guarded), which
+  are ordered after `niriblue-firstboot` so they never race it.
+
+Flatpak is the long pole; if a faster first boot is preferred, move it out of the gate in
+`/usr/libexec/niriblue-firstboot` and let it stream in after the desktop instead.
+
 ## Gotchas
 
 ### sysexts are enabled statically in `/var` across deployments
