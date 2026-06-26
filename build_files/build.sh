@@ -272,7 +272,8 @@ dnf5 -y install \
     gnome-disk-utility gparted filelight \
     fuse fuse-libs flatpak \
     papirus-icon-theme \
-    zen-browser
+    zen-browser \
+    kf6-kimageformats 
 
 # Enable fingerprint authentication (T14 reader)
 authselect enable-feature with-fingerprint
@@ -360,6 +361,13 @@ dnf5 -y install \
     docker-ce docker-ce-cli containerd.io \
     docker-buildx-plugin docker-compose-plugin docker-ce-rootless-extras \
     slirp4netns
+
+# distrobox + podman: distrobox (DistroShelf flatpak is its GUI front-end) needs a
+# rootless container backend to be usable by a normal account. The image's docker is
+# rootful and disabled by default (opt-in via ujust), so podman -- rootless out of the
+# box and distrobox's default backend -- is installed alongside so distrobox works for
+# any user without setup.
+dnf5 -y install distrobox podman
 
 # ollama is intentionally not installed: the Fedora package pulls the entire ROCm
 # stack (~5 GB). It is provided on demand via `ujust setup-ollama`.

@@ -9,3 +9,4 @@ org.gnome.TextEditor
 org.gnome.Loupe
 io.mpv.Mpv
 org.gnome.SimpleScan
+com.ranfdev.DistroShelf
