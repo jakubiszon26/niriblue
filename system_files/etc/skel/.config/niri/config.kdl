@@ -181,13 +181,14 @@ window-rule {
 
 window-rule {
     match app-id=r#"^org\.gnome\."#
+    match app-id=r#"^org\.kde\."#
     draw-border-with-background false
     geometry-corner-radius 12
     clip-to-geometry true
 }
 
 window-rule {
-    match app-id=r#"^gnome-control-center$"#
+    match app-id=r#"^systemsettings$"#
     match app-id=r#"^pavucontrol$"#
     match app-id=r#"^nm-connection-editor$"#
     default-column-width { proportion 0.5; }
@@ -195,11 +196,10 @@ window-rule {
 }
 
 window-rule {
-    match app-id=r#"^org\.gnome\.Calculator$"#
-    match app-id=r#"^gnome-calculator$"#
+    match app-id=r#"^org\.kde\.kcalc$"#
     match app-id=r#"^galculator$"#
     match app-id=r#"^blueman-manager$"#
-    match app-id=r#"^org\.gnome\.Nautilus$"#
+    match app-id=r#"^org\.kde\.dolphin$"#
     match app-id=r#"^xdg-desktop-portal$"#
     match app-id=r#"^io\.github\.jakubiszon26\.niriblue_portal$"#
     open-floating true

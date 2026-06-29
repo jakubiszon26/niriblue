@@ -169,9 +169,10 @@ binds {
     Mod+Shift+P { power-off-monitors; }
     Mod+Shift+E { quit; }
 
-    // ----- Terminal -----
+    // ----- Terminal / apps -----
     Mod+Return hotkey-overlay-title="Open Terminal" { spawn "kitty"; }
     Mod+Z hotkey-overlay-title="Open zen browser" {spawn "zen-browser"; }
+    Mod+E hotkey-overlay-title="Open Files" { spawn "dolphin"; }
     // ----- Overview / przelaczanie -----
     Mod+D repeat=false { toggle-overview; }
     Mod+Tab repeat=false { toggle-overview; }

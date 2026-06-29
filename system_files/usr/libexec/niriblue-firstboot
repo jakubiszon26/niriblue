@@ -4,8 +4,8 @@
 # Purpose: on the very first boot, drive the per-user/runtime install steps (Flatpak
 # GUI apps, the sysexts-manager tool, Nix) IN SEQUENCE while the Plymouth boot splash is
 # still up, so the user sees "what is being installed" instead of being dropped onto a
-# half-populated desktop. The display manager (SDDM / display-manager.service) is ordered
-# after this unit, so the desktop does not appear until this finishes (see
+# half-populated desktop. The display manager (Plasma Login Manager / display-manager.service)
+# is ordered after this unit, so the desktop does not appear until this finishes (see
 # niriblue-firstboot.service).
 #
 # Safety: this ALWAYS releases the gate (writes the done-marker) even if a step fails or

@@ -12,20 +12,21 @@ Anything that must exist before/while userspace comes up, or that cannot be a la
 `/usr` overlay, belongs here.
 
 Examples in this image: the CachyOS **kernel**, the full **device-firmware** set +
-microcode, the first-class **KDE Plasma** desktop + **SDDM** + its core KDE app suite,
-**niri** + **DankMaterialShell** (selectable session), **Discover** + the PackageKit-bootc
-backend, XDG **portals**, **eGPU**/Thunderbolt bits (`bolt`, kargs), audio stack, the
-hardware daemons (fwupd/thermald/bluez/cups/sane/ModemManager), the Steam/gamescope
-session, `libvirt`. These need `/etc` and units present at early boot and/or ship kernel
-modules, so they cannot move to a sysext.
+microcode, the first-class **KDE Plasma** desktop + **Plasma Login Manager** + its core KDE
+app suite, **niri** + **DankMaterialShell** (second-class selectable session), **Discover**
++ the PackageKit-bootc backend, XDG **portals**, **eGPU**/Thunderbolt bits (`bolt`, kargs),
+audio stack, the hardware daemons (fwupd/thermald/bluez/cups/sane/ModemManager), the
+Steam/gamescope session, `libvirt`. These need `/etc` and units present at early boot
+and/or ship kernel modules, so they cannot move to a sysext.
 
 > **One login manager.** Plasma is the first-class desktop and owns the display manager:
-> **SDDM**. It lists every `/usr/share/wayland-sessions/*.desktop` (Plasma, niri, Steam),
-> so niri stays selectable; the niri session still autostarts DMS because `niri.desktop`
-> runs `niri-session` → `niri.service` (which `Wants` `dms.service`). Exactly one DM may be
-> enabled, so `build.sh` **disables greetd and Fedora 44's `plasmalogin.service`** and
-> force-enables `sddm.service` — otherwise a second DM races for VT1 and breaks login.
-> The first-boot gate (`niriblue-firstboot.service`) is ordered `Before=display-manager.service`
+> Fedora 44's **Plasma Login Manager** (`plasmalogin.service`, a Breeze-only fork of SDDM).
+> It lists every `/usr/share/wayland-sessions/*.desktop` (Plasma, niri, Steam), so niri
+> stays selectable; the niri session still autostarts DMS because `niri.desktop` runs
+> `niri-session` → `niri.service` (which `Wants` `dms.service`). Exactly one DM may be
+> enabled, so `build.sh` **disables greetd and `sddm.service`** and force-enables
+> `plasmalogin.service` — otherwise a second DM races for VT1 and breaks login. The
+> first-boot gate (`niriblue-firstboot.service`) is ordered `Before=display-manager.service`
 > so it still holds the splash until setup finishes.
 
 ### 2. systemd-sysext — `sysexts-manager`, community channel
