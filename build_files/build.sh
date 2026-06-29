@@ -244,7 +244,9 @@ dnf5 -y install xwayland-satellite mate-polkit
 dnf5 -y install greetd-selinux
 dnf5 -y install google-noto-sans-fonts google-noto-emoji-fonts
 
-systemctl enable greetd.service
+# Login is handled by SDDM -- Plasma's own display manager -- set up in the KDE Plasma
+# section below (Plasma is the first-class desktop now). greetd + the DMS greeter stay
+# installed but disabled, kept as an easy fallback; SDDM lists the niri session too.
 systemctl set-default graphical.target
 
 ### Steam / gamescope session
@@ -286,18 +288,18 @@ authselect enable-feature with-fingerprint
 update-desktop-database /usr/share/applications || true
 
 
-### Desktop 2: full KDE Plasma (Wayland) as a SECOND session alongside niri
+### Desktop: full KDE Plasma (Wayland) as the first-class desktop, with its own DM
 #
-# niri + DMS stays the default; Plasma is added as a second, fully-featured Wayland
-# session. plasma-workspace-wayland drops /usr/share/wayland-sessions/plasma.desktop,
-# which the DMS greeter's session picker lists automatically (greetd still launches
-# `dms-greeter --command niri`, so niri is the default and Plasma is one click away).
-# dms.service is scoped to niri.service.wants, so the DMS shell never leaks into Plasma.
+# Plasma is the primary desktop and gets its own display manager (SDDM, below). niri + DMS
+# stays available as a selectable session: SDDM lists every /usr/share/wayland-sessions
+# entry, and the niri session still autostarts DMS because niri.desktop runs niri-session,
+# which does `systemctl --user start niri.service`, and dms.service is wanted by
+# niri.service (set up in the niri section above). So nothing about the niri session
+# changes -- it just logs in through SDDM instead of the DMS greeter.
 #
 # Hand-picked package set (not the Fedora `kde-desktop-environment` group): keeps Plasma
-# on clean upstream Breeze with no Fedora spin theming, and -- crucially -- avoids the
-# group's webcam/Firefox/extras bloat. The login-manager handling below is the important
-# part (see the masking step).
+# on clean upstream Breeze with no Fedora spin theming, and avoids the group's
+# webcam/Firefox/extras bloat.
 dnf5 -y install \
     plasma-workspace plasma-workspace-wayland plasma-desktop \
     plasma-systemsettings kwin-wayland \
@@ -307,20 +309,27 @@ dnf5 -y install \
     xdg-desktop-portal-kde kde-gtk-config breeze-gtk \
     kwalletmanager kfind
 
-# CRITICAL: keep greetd as the ONE and only display manager.
+### Login: SDDM as the single system display manager (Plasma's own DM)
 #
-# Fedora 44 KDE ships the new Plasma Login Manager (plasmalogin.service); installing the
-# Plasma packages pulls it (and/or sddm) in, and its RPM preset ENABLES it. With greetd
-# also enabled, the Plasma login manager wins the race for VT1, hijacks login, shows its
-# own "Plasma Setup" first-run wizard, and the niri session never comes up. (This is
-# exactly what broke both sessions on the first attempt.) Disable + mask both competing
-# DMs so only the DMS greeter under greetd ever runs; mask is idempotent and works even
-# if the unit is not installed, so it also blocks any future re-enable by a preset.
-systemctl disable plasmalogin.service sddm.service 2>/dev/null || true
-systemctl mask plasmalogin.service sddm.service 2>/dev/null || true
-# Re-assert greetd as the active login manager (it was enabled earlier; make it explicit
-# here so the ordering relative to the Plasma install is unambiguous).
-systemctl enable greetd.service
+# Exactly ONE display manager may own display-manager.service. The Plasma packages may
+# also pull Fedora 44's new Plasma Login Manager (plasmalogin.service) whose preset would
+# enable it, and greetd was the old niri greeter -- two enabled DMs race for VT1 and break
+# login (that is what broke the first attempt). So: install SDDM, disable greetd and
+# plasmalogin, and force-enable SDDM so it owns display-manager.service unambiguously.
+dnf5 -y install sddm
+systemctl disable greetd.service plasmalogin.service 2>/dev/null || true
+systemctl enable --force sddm.service
+
+# Keep SDDM clean and predictable: Wayland greeter (F44 default) on the upstream Breeze
+# theme (no Fedora SDDM theming). /etc/sddm.conf.d wins over Fedora's /usr/lib defaults.
+mkdir -p /etc/sddm.conf.d
+cat >/etc/sddm.conf.d/10-niriblue.conf <<'SDDMEOF'
+[General]
+DisplayServer=wayland
+
+[Theme]
+Current=breeze
+SDDMEOF
 
 # Core KDE application suite (native, part of a "full Plasma"): file manager, terminal,
 # editor, calculator, image/document/screenshot/archive tools, scanning and media. These
