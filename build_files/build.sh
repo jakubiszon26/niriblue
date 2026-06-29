@@ -68,7 +68,8 @@ dnf5 install -y NetworkManager-wifi wpa_supplicant
 ### arbitrary hardware out of the box, not only on the author's machine.
 
 # Firmware/BIOS updates via LVFS (fwupd). The refresh timer keeps the metadata current
-# so GNOME Software can surface device firmware updates; actual flashing stays manual.
+# so the software center (Discover) can surface device firmware updates; actual flashing
+# stays manual.
 dnf5 install -y fwupd
 systemctl enable fwupd-refresh.timer
 
@@ -87,7 +88,10 @@ systemctl enable bluetooth.service
 # driverless IPP-over-USB (most printers since ~2017), gutenprint-cups for older models,
 # cups-pk-helper so the desktop can manage printers via PolicyKit. cups.socket activates
 # cupsd on demand; ipp-usb is udev-activated per device.
-dnf5 install -y cups cups-filters cups-pk-helper ipp-usb gutenprint-cups
+#
+# hplip adds HP's printer/scanner stack (hpcups driver + hpaio SANE backend) for the many
+# older/USB HP devices that are not fully driverless; the hp-setup GUI comes with it.
+dnf5 install -y cups cups-filters cups-pk-helper ipp-usb gutenprint-cups hplip
 systemctl enable cups.socket
 
 # Scanning, driverless first: sane-backends + sane-airscan (eSCL/WSD, works over the
@@ -282,15 +286,63 @@ authselect enable-feature with-fingerprint
 update-desktop-database /usr/share/applications || true
 
 
-### Software center: GNOME Software + PackageKit-bootc backend
+### Desktop 2: full KDE Plasma (Wayland) as a SECOND session alongside niri
 #
-# Replaces Bazaar (dropped from flatpaks.list). GNOME Software handles Flatpaks via
-# its built-in flatpak plugin (Flathub is added on first boot by
-# niriblue-flatpak-setup) and OS image updates via PackageKit using the
-# PackageKit-bootc backend (compiled in the pk-bootc-builder Containerfile stage and
-# COPY'd into the image). Switch PackageKit's default backend from dnf to bootc:
-# on a bootc system there is no RPM layering for the dnf backend to manage.
-dnf5 -y install gnome-software PackageKit
+# niri + DMS stays the default; Plasma is added as a second, fully-featured Wayland
+# session. plasma-workspace-wayland drops /usr/share/wayland-sessions/plasma.desktop,
+# which the DMS greeter's session picker lists automatically (greetd still launches
+# `dms-greeter --command niri`, so niri is the default and Plasma is one click away).
+# dms.service is scoped to niri.service.wants, so the DMS shell never leaks into Plasma.
+#
+# Hand-picked package set (not the Fedora `kde-desktop-environment` group): keeps Plasma
+# on clean upstream Breeze with no Fedora spin theming, and -- crucially -- avoids the
+# group's webcam/Firefox/extras bloat. The login-manager handling below is the important
+# part (see the masking step).
+dnf5 -y install \
+    plasma-workspace plasma-workspace-wayland plasma-desktop \
+    plasma-systemsettings kwin-wayland \
+    powerdevil kscreen plasma-nm plasma-pa bluedevil \
+    plasma-systemmonitor plasma-thunderbolt plasma-disks \
+    kscreenlocker kdeplasma-addons kde-cli-tools kmenuedit krunner \
+    xdg-desktop-portal-kde kde-gtk-config breeze-gtk \
+    kwalletmanager kfind
+
+# CRITICAL: keep greetd as the ONE and only display manager.
+#
+# Fedora 44 KDE ships the new Plasma Login Manager (plasmalogin.service); installing the
+# Plasma packages pulls it (and/or sddm) in, and its RPM preset ENABLES it. With greetd
+# also enabled, the Plasma login manager wins the race for VT1, hijacks login, shows its
+# own "Plasma Setup" first-run wizard, and the niri session never comes up. (This is
+# exactly what broke both sessions on the first attempt.) Disable + mask both competing
+# DMs so only the DMS greeter under greetd ever runs; mask is idempotent and works even
+# if the unit is not installed, so it also blocks any future re-enable by a preset.
+systemctl disable plasmalogin.service sddm.service 2>/dev/null || true
+systemctl mask plasmalogin.service sddm.service 2>/dev/null || true
+# Re-assert greetd as the active login manager (it was enabled earlier; make it explicit
+# here so the ordering relative to the Plasma install is unambiguous).
+systemctl enable greetd.service
+
+# Core KDE application suite (native, part of a "full Plasma"): file manager, terminal,
+# editor, calculator, image/document/screenshot/archive tools, scanning and media. These
+# are ADDED, not swapped in -- niri keeps its existing apps (nautilus/kitty/flatpaks)
+# untouched, so nothing about the working niri session changes.
+dnf5 -y install \
+    dolphin dolphin-plugins konsole kate kcalc \
+    gwenview okular spectacle ark \
+    skanpage haruna
+
+### Software center: KDE Discover + PackageKit-bootc backend
+#
+# Replaces GNOME Software. Discover handles Flatpaks via plasma-discover-flatpak (Flathub
+# is added on first boot by niriblue-flatpak-setup) and OS image updates via PackageKit
+# (plasma-discover-packagekit). The PackageKit-bootc backend (compiled in the
+# pk-bootc-builder Containerfile stage and COPY'd into the image) is reused unchanged --
+# it is a generic PackageKit backend, so Discover drives it through PackageKit exactly as
+# GNOME Software did. Switch PackageKit's default backend from dnf to bootc: on a bootc
+# system there is no RPM layering for the dnf backend to manage.
+dnf5 -y install \
+    plasma-discover plasma-discover-flatpak plasma-discover-packagekit \
+    PackageKit
 if grep -q '^DefaultBackend=' /etc/PackageKit/PackageKit.conf; then
     sed -i 's/^DefaultBackend=.*/DefaultBackend=bootc/' /etc/PackageKit/PackageKit.conf
 else
@@ -304,7 +356,7 @@ fi
 # The script (/usr/bin/niriblue-portal), config (/usr/share/niriblue/portal/portal.yml),
 # desktop entry, icon and metainfo all ship via system_files. It needs the GTK4/Adwaita
 # Python bindings (PyGObject) + PyYAML; gtk4/libadwaita are already pulled in by
-# nautilus/gnome-software but are listed here so the dependency is explicit.
+# nautilus but are listed here so the dependency is explicit.
 dnf5 -y install python3-gobject python3-pyyaml gtk4 libadwaita
 chmod 0755 /usr/bin/niriblue-portal
 gtk4-update-icon-cache -f /usr/share/icons/hicolor 2>/dev/null || true
