@@ -14,7 +14,8 @@ COPY assets /assets
 # Done in a throwaway stage so the toolchain (meson/ninja/gcc/-devel) never lands
 # in the final image; only the built .so + python helper are COPY'd across. Same
 # fedora-bootc:44 base as the final image so the backend compiles against the exact
-# PackageKit ABI it will be loaded by at runtime.
+# PackageKit ABI it will be loaded by at runtime. It is a generic PackageKit backend,
+# so KDE Discover (plasma-discover-packagekit) drives OS image updates through it.
 FROM quay.io/fedora/fedora-bootc:44 AS pk-bootc-builder
 RUN dnf5 -y install git gcc meson ninja-build pkgconf-pkg-config \
         PackageKit-devel glib2-devel && \
@@ -61,7 +62,7 @@ RUN --mount=type=bind,from=ctx,source=/,target=/ctx \
 ### PackageKit-bootc backend (compiled in the pk-bootc-builder stage above).
 ## libpk_backend_bootc.so -> /usr/lib64/packagekit-backend/, bootcBackend.py ->
 ## /usr/share/PackageKit/helpers/bootc/. PackageKit is switched to this backend
-## (DefaultBackend=bootc) inside build.sh, and GNOME Software drives it.
+## (DefaultBackend=bootc) inside build.sh, and KDE Discover drives it.
 COPY --from=pk-bootc-builder /out/ /
 
 ### LINTING

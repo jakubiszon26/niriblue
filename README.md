@@ -7,10 +7,11 @@ My custom [Fedora bootc](https://docs.fedoraproject.org/en-US/bootc/) desktop im
 ## Highlights
 
 - **Base:** `fedora-bootc:44` with the **CachyOS kernel** + `cachyos-settings`, `scx` schedulers, and `ananicy-cpp`.
-- **Desktop:** niri + DankMaterialShell, `greetd` with the DMS greeter and dvorak-first keybinds.
-- **Hardware:** Mesa + Vulkan, VA-API (Intel + AMD freeworld), full ffmpeg, Thunderbolt (`bolt`), fingerprint auth.
+- **Desktops:** niri + DankMaterialShell (default) **and a full KDE Plasma Wayland session** — pick either from the DMS greeter's session list. Clean upstream Breeze, no Fedora theming. `greetd` with the DMS greeter and dvorak-first keybinds.
+- **Hardware:** Mesa + Vulkan, VA-API (Intel + AMD freeworld), full ffmpeg, Thunderbolt (`bolt`), fingerprint auth, HP printers (`hplip`).
 - **Gaming:** Steam gamescope session and wine.
-- **Apps:** RPMs (Kitty, Nautilus, Zen, KDE Connect, virt-manager, …) plus various Flatpaks installed on first boot.
+- **Apps:** KDE is the default app ecosystem — Dolphin, Kate, KCalc, Gwenview, Okular, Spectacle, Ark, Skanpage, Haruna ship natively; plus Kitty, Zen, KDE Connect, virt-manager and a few cross-desktop Flatpaks (LibreOffice, Flatseal, …) installed on first boot.
+- **Software center:** KDE **Discover** (Flatpaks via Flathub + OS image updates through the PackageKit-bootc backend).
 - **Extras:** rootless Docker (opt-in), libvirt/KVM, Nix + home-manager, Flatpak/Flathub, `sysexts-manager` (add/removable system extensions — none installed by default), `ujust` recipes + **niriblue Portal** (a GTK GUI front-end for them).
 
 ## Usage

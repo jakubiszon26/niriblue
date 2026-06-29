@@ -1,2 +1,34 @@
 [Default Applications]
+# KDE is the default app ecosystem; these handlers point at the native Plasma apps
+# installed in build_files/build.sh.
 application/pdf=org.kde.okular.desktop
+
+# Images -> Gwenview
+image/png=org.kde.gwenview.desktop
+image/jpeg=org.kde.gwenview.desktop
+image/gif=org.kde.gwenview.desktop
+image/webp=org.kde.gwenview.desktop
+image/bmp=org.kde.gwenview.desktop
+image/tiff=org.kde.gwenview.desktop
+image/svg+xml=org.kde.gwenview.desktop
+
+# Plain text / source -> Kate
+text/plain=org.kde.kate.desktop
+text/markdown=org.kde.kate.desktop
+
+# Archives -> Ark
+application/zip=org.kde.ark.desktop
+application/x-tar=org.kde.ark.desktop
+application/x-compressed-tar=org.kde.ark.desktop
+application/x-7z-compressed=org.kde.ark.desktop
+application/vnd.rar=org.kde.ark.desktop
+
+# Audio / video -> Haruna
+video/mp4=org.kde.haruna.desktop
+video/x-matroska=org.kde.haruna.desktop
+video/webm=org.kde.haruna.desktop
+audio/mpeg=org.kde.haruna.desktop
+audio/flac=org.kde.haruna.desktop
+
+# File manager -> Dolphin
+inode/directory=org.kde.dolphin.desktop

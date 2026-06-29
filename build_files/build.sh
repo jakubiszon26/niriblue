@@ -68,7 +68,8 @@ dnf5 install -y NetworkManager-wifi wpa_supplicant
 ### arbitrary hardware out of the box, not only on the author's machine.
 
 # Firmware/BIOS updates via LVFS (fwupd). The refresh timer keeps the metadata current
-# so GNOME Software can surface device firmware updates; actual flashing stays manual.
+# so the software center (Discover) can surface device firmware updates; actual flashing
+# stays manual.
 dnf5 install -y fwupd
 systemctl enable fwupd-refresh.timer
 
@@ -87,7 +88,11 @@ systemctl enable bluetooth.service
 # driverless IPP-over-USB (most printers since ~2017), gutenprint-cups for older models,
 # cups-pk-helper so the desktop can manage printers via PolicyKit. cups.socket activates
 # cupsd on demand; ipp-usb is udev-activated per device.
-dnf5 install -y cups cups-filters cups-pk-helper ipp-usb gutenprint-cups
+#
+# hplip adds HP's printer/scanner stack (hpcups driver + hpaio SANE backend) for the many
+# older/USB HP devices that are not fully driverless; the hp-setup/hp-toolbox GUIs come
+# with it. The package's hplip.service (DBus-activated) is left as-is.
+dnf5 install -y cups cups-filters cups-pk-helper ipp-usb gutenprint-cups hplip
 systemctl enable cups.socket
 
 # Scanning, driverless first: sane-backends + sane-airscan (eSCL/WSD, works over the
@@ -259,21 +264,24 @@ sed -i 's|^Exec=gamescope-session$|Exec=niriblue-gamescope-session|' \
 
 ### Applications (external repos via system_files: zen-browser COPR)
 
-# okular, gnome-calculator, gnome-text-editor, loupe and mpv are installed as
-# Flatpaks instead (see system_files/usr/share/niriblue/flatpaks.list). vscode and
-# tailscale are NOT shipped by default -- add them post-install via sysexts-manager
-# (see LAYERING.md), so users who do not want them are not forced to carry them.
+# The default app ecosystem is KDE: the file manager (dolphin), editor (kate),
+# calculator (kcalc), image/document/media viewers and the scanning GUI are installed
+# natively as part of the full Plasma desktop further down -- NOT as Flatpaks (the old
+# GNOME Flatpaks were dropped from flatpaks.list). kitty stays as the niri terminal.
+# vscode and tailscale are NOT shipped by default -- add them post-install via
+# sysexts-manager (see LAYERING.md), so users who do not want them are not forced to
+# carry them.
 dnf5 -y install \
-    kitty nautilus \
+    kitty \
     kde-connect \
     wine winetricks gamemode vulkan-tools \
-    file-roller unzip 7zip unrar \
+    unzip 7zip unrar \
     fprintd fprintd-pam \
-    gnome-disk-utility gparted filelight \
+    gparted filelight \
     fuse fuse-libs flatpak \
     papirus-icon-theme \
     zen-browser \
-    kf6-kimageformats 
+    kf6-kimageformats
 
 # Enable fingerprint authentication (T14 reader)
 authselect enable-feature with-fingerprint
@@ -282,15 +290,49 @@ authselect enable-feature with-fingerprint
 update-desktop-database /usr/share/applications || true
 
 
-### Software center: GNOME Software + PackageKit-bootc backend
+### Desktop: full KDE Plasma (Wayland) alongside niri
 #
-# Replaces Bazaar (dropped from flatpaks.list). GNOME Software handles Flatpaks via
-# its built-in flatpak plugin (Flathub is added on first boot by
-# niriblue-flatpak-setup) and OS image updates via PackageKit using the
-# PackageKit-bootc backend (compiled in the pk-bootc-builder Containerfile stage and
-# COPY'd into the image). Switch PackageKit's default backend from dnf to bootc:
-# on a bootc system there is no RPM layering for the dnf backend to manage.
-dnf5 -y install gnome-software PackageKit
+# niri + DMS stays the default session; Plasma is added as a second, fully-featured
+# Wayland session. plasma-workspace-wayland drops /usr/share/wayland-sessions/plasma.desktop,
+# which the DMS greeter's session picker lists automatically (greetd still defaults to
+# niri via `--command niri`), so the user just selects "Plasma" at login. dms.service is
+# scoped to niri.service.wants (set above), so the DMS shell never leaks into the Plasma
+# session -- Plasma runs its own panel/shell.
+#
+# Intentionally a hand-picked package set rather than the Fedora `@kde-desktop`
+# comps group: that group pulls SDDM (we use greetd), Fedora's KDE look-and-feel /
+# wallpaper branding and a pile of spin-only extras. Installing the components
+# explicitly keeps Plasma on its clean upstream Breeze defaults with no Fedora theming.
+dnf5 -y install \
+    plasma-workspace plasma-workspace-wayland plasma-desktop \
+    plasma-systemsettings kwin-wayland \
+    powerdevil kscreen plasma-nm plasma-pa bluedevil \
+    plasma-systemmonitor plasma-thunderbolt plasma-disks \
+    kscreenlocker kdeplasma-addons kde-cli-tools kmenuedit \
+    xdg-desktop-portal-kde kde-gtk-config breeze-gtk \
+    kwalletmanager kfind
+
+# Core KDE application suite (native, part of "full Plasma"). These ARE the default
+# ecosystem apps now that the GNOME Flatpaks are gone: dolphin (also the niri file
+# manager, see the DMS dock seed), konsole, kate, kcalc, gwenview, okular, spectacle,
+# ark (archiver, replaces file-roller) and skanpage/haruna for scanning and media.
+dnf5 -y install \
+    dolphin dolphin-plugins konsole kate kcalc \
+    gwenview okular spectacle ark \
+    skanpage haruna
+
+### Software center: KDE Discover + PackageKit-bootc backend
+#
+# Replaces GNOME Software. Discover handles Flatpaks via plasma-discover-flatpak (Flathub
+# is added on first boot by niriblue-flatpak-setup) and OS image updates via PackageKit
+# (plasma-discover-packagekit). The PackageKit-bootc backend (compiled in the
+# pk-bootc-builder Containerfile stage and COPY'd into the image) is reused unchanged --
+# it is a generic PackageKit backend, so Discover drives it through PackageKit exactly as
+# GNOME Software did. Switch PackageKit's default backend from dnf to bootc: on a bootc
+# system there is no RPM layering for the dnf backend to manage.
+dnf5 -y install \
+    plasma-discover plasma-discover-flatpak plasma-discover-packagekit \
+    PackageKit
 if grep -q '^DefaultBackend=' /etc/PackageKit/PackageKit.conf; then
     sed -i 's/^DefaultBackend=.*/DefaultBackend=bootc/' /etc/PackageKit/PackageKit.conf
 else
@@ -303,8 +345,8 @@ fi
 ### flatpak, sysexts-manager, kitty) directly -- a sandboxed Flatpak could not.
 # The script (/usr/bin/niriblue-portal), config (/usr/share/niriblue/portal/portal.yml),
 # desktop entry, icon and metainfo all ship via system_files. It needs the GTK4/Adwaita
-# Python bindings (PyGObject) + PyYAML; gtk4/libadwaita are already pulled in by
-# nautilus/gnome-software but are listed here so the dependency is explicit.
+# Python bindings (PyGObject) + PyYAML; gtk4/libadwaita are listed explicitly here since
+# the desktop is now KDE/Qt and nothing else pulls them in.
 dnf5 -y install python3-gobject python3-pyyaml gtk4 libadwaita
 chmod 0755 /usr/bin/niriblue-portal
 gtk4-update-icon-cache -f /usr/share/icons/hicolor 2>/dev/null || true
