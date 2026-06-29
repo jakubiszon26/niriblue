@@ -188,7 +188,7 @@ window-rule {
 }
 
 window-rule {
-    match app-id=r#"^gnome-control-center$"#
+    match app-id=r#"^systemsettings$"#
     match app-id=r#"^pavucontrol$"#
     match app-id=r#"^nm-connection-editor$"#
     default-column-width { proportion 0.5; }
@@ -197,7 +197,6 @@ window-rule {
 
 window-rule {
     match app-id=r#"^org\.kde\.kcalc$"#
-    match app-id=r#"^org\.gnome\.Calculator$"#
     match app-id=r#"^galculator$"#
     match app-id=r#"^blueman-manager$"#
     match app-id=r#"^org\.kde\.dolphin$"#

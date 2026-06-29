@@ -1,17 +1,17 @@
 # niriblue
 ![logo](https://github.com/jakubiszon26/niriblue/blob/main/assets/niriblue_logo.png)
-My custom [Fedora bootc](https://docs.fedoraproject.org/en-US/bootc/) desktop image built around the [niri](https://github.com/YaLTeR/niri) compositor and [DankMaterialShell](https://github.com/AvengeMedia/DankMaterialShell), highly opinionated, Dvorak-first.
+My custom [Fedora bootc](https://docs.fedoraproject.org/en-US/bootc/) desktop image: a first-class **KDE Plasma** (Wayland) desktop with the [niri](https://github.com/YaLTeR/niri) compositor + [DankMaterialShell](https://github.com/AvengeMedia/DankMaterialShell) kept as a second-class, Dvorak-first session. Highly opinionated.
 
 `ghcr.io/jakubiszon26/niriblue:latest` (cosign-signed)
 
 ## Highlights
 
 - **Base:** `fedora-bootc:44` with the **CachyOS kernel** + `cachyos-settings`, `scx` schedulers, and `ananicy-cpp`.
-- **Desktops:** niri + DankMaterialShell (default) **and a full KDE Plasma Wayland session** — pick either from the DMS greeter's session list. Clean upstream Breeze, no Fedora theming. `greetd` with the DMS greeter and dvorak-first keybinds.
+- **Desktops:** **full KDE Plasma Wayland — first-class**, with its own display manager, Fedora 44's **Plasma Login Manager** (clean upstream Breeze, no Fedora theming). The **niri + DankMaterialShell** session is kept as a second-class, selectable session (dvorak-first keybinds). PLM is the single login manager; greetd/DMS-greeter and SDDM are disabled.
+- **Apps:** KDE is the default ecosystem, native — Dolphin, Kate, KCalc, Gwenview, Okular, Spectacle, Ark, Skanpage, Haruna, KDE Partition Manager (no more GNOME apps/Flatpaks). Plus Kitty, Zen, KDE Connect, virt-manager and a few cross-desktop Flatpaks (LibreOffice, Flatseal, …) on first boot.
+- **Software center:** KDE **Discover** (Flatpaks via Flathub + OS image updates through the PackageKit-bootc backend; update notifier enabled).
 - **Hardware:** Mesa + Vulkan, VA-API (Intel + AMD freeworld), full ffmpeg, Thunderbolt (`bolt`), fingerprint auth, HP printers (`hplip`).
 - **Gaming:** Steam gamescope session and wine.
-- **Apps:** KDE is the default app ecosystem — Dolphin, Kate, KCalc, Gwenview, Okular, Spectacle, Ark, Skanpage, Haruna ship natively; plus Kitty, Zen, KDE Connect, virt-manager and a few cross-desktop Flatpaks (LibreOffice, Flatseal, …) installed on first boot.
-- **Software center:** KDE **Discover** (Flatpaks via Flathub + OS image updates through the PackageKit-bootc backend).
 - **Extras:** rootless Docker (opt-in), libvirt/KVM, Nix + home-manager, Flatpak/Flathub, `sysexts-manager` (add/removable system extensions — none installed by default), `ujust` recipes + **niriblue Portal** (a GTK GUI front-end for them).
 
 ## Usage

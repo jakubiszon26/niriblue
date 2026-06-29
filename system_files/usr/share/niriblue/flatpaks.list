@@ -1,9 +1,9 @@
 # Flatpaks installed on first boot. One app id per line; # and blank lines ignored.
 #
-# The KDE app ecosystem (dolphin, kate, kcalc, gwenview, okular, spectacle, ark,
-# skanpage, haruna, ...) ships NATIVELY as part of the full Plasma desktop -- see
-# build_files/build.sh -- so it is intentionally NOT listed here. This list is only for
-# cross-desktop GUI apps that have no place in the base image.
+# The KDE app ecosystem (dolphin, kate, kcalc, gwenview, okular, spectacle, ark, skanpage,
+# haruna, ...) ships NATIVELY as part of the full Plasma desktop -- see build_files/build.sh
+# -- so it is intentionally NOT listed here. This list is only for cross-desktop GUI apps
+# that have no place in the base image.
 com.github.tchx84.Flatseal
 net.nokyan.Resources
 org.libreoffice.LibreOffice

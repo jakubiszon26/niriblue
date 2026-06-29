@@ -90,8 +90,7 @@ systemctl enable bluetooth.service
 # cupsd on demand; ipp-usb is udev-activated per device.
 #
 # hplip adds HP's printer/scanner stack (hpcups driver + hpaio SANE backend) for the many
-# older/USB HP devices that are not fully driverless; the hp-setup/hp-toolbox GUIs come
-# with it. The package's hplip.service (DBus-activated) is left as-is.
+# older/USB HP devices that are not fully driverless; the hp-setup GUI comes with it.
 dnf5 install -y cups cups-filters cups-pk-helper ipp-usb gutenprint-cups hplip
 systemctl enable cups.socket
 
@@ -245,7 +244,10 @@ dnf5 -y install xwayland-satellite mate-polkit
 dnf5 -y install greetd-selinux
 dnf5 -y install google-noto-sans-fonts google-noto-emoji-fonts
 
-systemctl enable greetd.service
+# Login is handled by the Plasma Login Manager (PLM) -- Plasma's own display manager --
+# set up in the KDE Plasma section below (Plasma is the first-class desktop now). greetd +
+# the DMS greeter stay installed but disabled, kept as an easy fallback; PLM lists the niri
+# session too.
 systemctl set-default graphical.target
 
 ### Steam / gamescope session
@@ -264,20 +266,20 @@ sed -i 's|^Exec=gamescope-session$|Exec=niriblue-gamescope-session|' \
 
 ### Applications (external repos via system_files: zen-browser COPR)
 
-# The default app ecosystem is KDE: the file manager (dolphin), editor (kate),
-# calculator (kcalc), image/document/media viewers and the scanning GUI are installed
-# natively as part of the full Plasma desktop further down -- NOT as Flatpaks (the old
-# GNOME Flatpaks were dropped from flatpaks.list). kitty stays as the niri terminal.
-# vscode and tailscale are NOT shipped by default -- add them post-install via
-# sysexts-manager (see LAYERING.md), so users who do not want them are not forced to
-# carry them.
+# The default app ecosystem is KDE: the file manager (dolphin), editor (kate), calculator
+# (kcalc), viewers (gwenview/okular), archiver (ark), disks (plasma-disks +
+# kde-partitionmanager) and scanning (skanpage) are installed natively in the KDE Plasma
+# section below -- NOT here, and NOT as Flatpaks (the GNOME Flatpaks are dropped from
+# flatpaks.list). So nautilus, file-roller, gnome-disk-utility and gparted are gone. kitty
+# stays (niri terminal + niriblue Portal drives it). vscode and tailscale are NOT shipped
+# by default -- add them post-install via sysexts-manager (see LAYERING.md).
 dnf5 -y install \
     kitty \
     kde-connect \
     wine winetricks gamemode vulkan-tools \
     unzip 7zip unrar \
     fprintd fprintd-pam \
-    gparted filelight \
+    filelight \
     fuse fuse-libs flatpak \
     papirus-icon-theme \
     zen-browser \
@@ -290,32 +292,49 @@ authselect enable-feature with-fingerprint
 update-desktop-database /usr/share/applications || true
 
 
-### Desktop: full KDE Plasma (Wayland) alongside niri
+### Desktop: full KDE Plasma (Wayland) as the first-class desktop, with its own DM
 #
-# niri + DMS stays the default session; Plasma is added as a second, fully-featured
-# Wayland session. plasma-workspace-wayland drops /usr/share/wayland-sessions/plasma.desktop,
-# which the DMS greeter's session picker lists automatically (greetd still defaults to
-# niri via `--command niri`), so the user just selects "Plasma" at login. dms.service is
-# scoped to niri.service.wants (set above), so the DMS shell never leaks into the Plasma
-# session -- Plasma runs its own panel/shell.
+# Plasma is the primary desktop and gets its own display manager: Fedora 44's Plasma Login
+# Manager (PLM, set up below). niri + DMS stays available as a SECOND-class selectable
+# session: PLM (a fork of SDDM) lists every /usr/share/wayland-sessions entry, and the niri
+# session still autostarts DMS because niri.desktop runs niri-session, which does
+# `systemctl --user start niri.service`, and dms.service is wanted by niri.service (set up
+# in the niri section above). So the niri session works the same; it just logs in via PLM.
 #
-# Intentionally a hand-picked package set rather than the Fedora `@kde-desktop`
-# comps group: that group pulls SDDM (we use greetd), Fedora's KDE look-and-feel /
-# wallpaper branding and a pile of spin-only extras. Installing the components
-# explicitly keeps Plasma on its clean upstream Breeze defaults with no Fedora theming.
+# Hand-picked package set (not the Fedora `kde-desktop-environment` group): keeps Plasma
+# on clean upstream Breeze with no Fedora spin theming, and avoids the group's
+# webcam/Firefox/extras bloat. The trailing packages are the "make it feel finished" bits:
+# Discover update notifier, browser<->panel integration, upstream KDE wallpapers, KWallet
+# PAM auto-unlock and the KDE partition manager (replaces gnome-disk-utility/gparted).
 dnf5 -y install \
     plasma-workspace plasma-workspace-wayland plasma-desktop \
     plasma-systemsettings kwin-wayland \
     powerdevil kscreen plasma-nm plasma-pa bluedevil \
     plasma-systemmonitor plasma-thunderbolt plasma-disks \
-    kscreenlocker kdeplasma-addons kde-cli-tools kmenuedit \
+    kscreenlocker kdeplasma-addons kde-cli-tools kmenuedit krunner \
     xdg-desktop-portal-kde kde-gtk-config breeze-gtk \
-    kwalletmanager kfind
+    kwalletmanager kfind \
+    plasma-discover-notifier plasma-browser-integration \
+    plasma-workspace-wallpapers kwallet-pam kde-partitionmanager
 
-# Core KDE application suite (native, part of "full Plasma"). These ARE the default
-# ecosystem apps now that the GNOME Flatpaks are gone: dolphin (also the niri file
-# manager, see the DMS dock seed), konsole, kate, kcalc, gwenview, okular, spectacle,
-# ark (archiver, replaces file-roller) and skanpage/haruna for scanning and media.
+### Login: Plasma Login Manager (PLM) as the single system display manager
+#
+# Plasma is first-class, so it owns the login screen via its own DM -- Fedora 44's Plasma
+# Login Manager (plasmalogin.service), a fork of SDDM, Breeze-only (so it stays clean with
+# no Fedora theming) and Wayland-native. Exactly ONE display manager may own
+# display-manager.service: greetd was the old niri greeter and the Plasma packages may also
+# pull SDDM whose preset would enable it -- two enabled DMs race for VT1 and break login
+# (that is what broke the first attempt). So: install PLM, disable greetd and sddm, and
+# force-enable plasmalogin so it owns display-manager.service unambiguously. PLM lists the
+# niri session from /usr/share/wayland-sessions, so niri stays one click away.
+dnf5 -y install plasma-login-manager kcm-plasmalogin
+systemctl disable greetd.service sddm.service 2>/dev/null || true
+systemctl enable --force plasmalogin.service
+
+# Core KDE application suite (native, the default ecosystem now): file manager, terminal,
+# editor, calculator, image/document/screenshot/archive tools, scanning and media. These
+# replace the GNOME Flatpaks (dropped from flatpaks.list) and nautilus (dropped from the
+# image); both the Plasma and niri sessions use them.
 dnf5 -y install \
     dolphin dolphin-plugins konsole kate kcalc \
     gwenview okular spectacle ark \
@@ -345,7 +364,7 @@ fi
 ### flatpak, sysexts-manager, kitty) directly -- a sandboxed Flatpak could not.
 # The script (/usr/bin/niriblue-portal), config (/usr/share/niriblue/portal/portal.yml),
 # desktop entry, icon and metainfo all ship via system_files. It needs the GTK4/Adwaita
-# Python bindings (PyGObject) + PyYAML; gtk4/libadwaita are listed explicitly here since
+# Python bindings (PyGObject) + PyYAML; gtk4/libadwaita are listed explicitly here because
 # the desktop is now KDE/Qt and nothing else pulls them in.
 dnf5 -y install python3-gobject python3-pyyaml gtk4 libadwaita
 chmod 0755 /usr/bin/niriblue-portal
