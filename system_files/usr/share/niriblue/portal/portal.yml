@@ -2,7 +2,7 @@
 #
 # A GUI front-end for the `ujust` recipes in
 # /usr/share/niriblue/just/niriblue.just. Each action either:
-#   * runs `script` directly in a kitty terminal (one-shot), or
+#   * runs `script` directly in a Konsole terminal (one-shot), or
 #   * opens a modal that first runs `status_script` headlessly and then shows
 #     the listed `options` (the option whose `id` matches the status string is
 #     highlighted).

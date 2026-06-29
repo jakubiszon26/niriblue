@@ -59,7 +59,7 @@ dnf5 install -y microcode_ctl amd-ucode-firmware
 # the WiFi device plugin (NetworkManager-wifi -> libnm-device-plugin-wifi.so) and the
 # WPA backend (wpa_supplicant) are weak deps the minimal base omits. Without the plugin
 # NM marks the wlan device "unmanaged by default" (reason 69) and never scans, so no
-# networks ever appear (e.g. in the DankMaterialShell network widget).
+# networks ever appear (e.g. in Plasma's NetworkManager applet).
 dnf5 install -y NetworkManager-wifi wpa_supplicant
 
 ### Hardware services: peripherals that "just work" on a desktop image but are weak
@@ -171,51 +171,7 @@ dnf5 -y install --allowerasing \
     scx-scheds scx-manager \
     ananicy-cpp cachyos-ananicy-rules
 
-### Desktop: niri + DankMaterialShell
-
-# quickshell-git is pinned on purpose: it builds against Qt 6.11 (matching Fedora and
-# the KDE apps below). Plain "quickshell" pins Qt 6.10 and would force a qt6 downgrade
-# that conflicts with okular/kde-connect/filelight.
-dnf5 -y install niri dms dms-greeter quickshell-git kanshi
-
-# oniri: auto-maximizes the only window in a niri workspace (used via
-# `spawn-at-startup "oniri"` in the niri config). Not packaged for Fedora, so pull
-# the upstream prebuilt static-musl binary and verify its checksum before installing.
-ONIRI_VER="1.2.2"
-curl -fsSL "https://github.com/Antiz96/oniri/releases/download/v${ONIRI_VER}/oniri-${ONIRI_VER}-x86_64" -o /usr/bin/oniri
-curl -fsSL "https://github.com/Antiz96/oniri/releases/download/v${ONIRI_VER}/oniri-${ONIRI_VER}-x86_64.sha256" -o /tmp/oniri.sha256
-echo "$(awk '{print $1}' /tmp/oniri.sha256)  /usr/bin/oniri" | sha256sum -c -
-chmod 0755 /usr/bin/oniri
-rm -f /tmp/oniri.sha256
-
-# Autostart the DMS shell in every niri session. dms.service is a systemd *user*
-# unit (ExecStart=dms run --session); the `dms` CLI normally enables it per-user, so
-# fresh accounts never get it and the catch-all `disable *` user-preset keeps it off.
-# Enable it image-wide via a global user-unit symlink, scoped to niri.service.wants
-# so it does NOT also launch in the Steam/gamescope session.
-mkdir -p /etc/systemd/user/niri.service.wants
-ln -sf /usr/lib/systemd/user/dms.service /etc/systemd/user/niri.service.wants/dms.service
-
-# Default niri config: /etc/skel for new accounts, /etc/niri as the system
-# fallback (used by users created before the config existed / with no ~/.config/niri).
-# Symlink /etc/niri -> the skel copy so there is a single source of truth: editing
-# system_files/etc/skel/.config/niri/ updates both. The link is relative (resolved
-# from /etc) and must point this way round -- skel holds the real files because
-# useradd copies skel contents verbatim into new home dirs.
-ln -snf skel/.config/niri /etc/niri
-
-# First-login helper that pops niri's hotkey overlay once (spawn-at-startup).
-chmod 0755 /usr/bin/niriblue-first-run-keybinds
-
-# Wallpapers referenced by the DMS session.json seed in /etc/skel
-mkdir -p /usr/share/backgrounds/niriblue
-cp /ctx/assets/light.png /ctx/assets/dark.png /usr/share/backgrounds/niriblue/
-
-# Branding logos referenced by the DMS settings.json seed in /etc/skel
-# (dock launcher + bar launcher button). Shipped system-wide so every account's
-# settings.json can point at a stable absolute path instead of a user home dir.
-mkdir -p /usr/share/niriblue/assets
-cp /ctx/assets/flame.svg /ctx/assets/flame_pixel.svg /usr/share/niriblue/assets/
+### Audio stack (PipeWire)
 
 dnf5 -y install pipewire wireplumber pipewire-pulseaudio pipewire-alsa
 
@@ -229,30 +185,44 @@ dnf5 -y install pipewire wireplumber pipewire-pulseaudio pipewire-alsa
 # the Cirrus CS35L41/56 amps found on newer laptops comes from cirrus-audio-firmware above.)
 dnf5 -y install alsa-sof-firmware
 
-# XDG portals (gtk fallback, gnome for screencast) + secret service
-dnf5 -y install xdg-desktop-portal-gtk xdg-desktop-portal-gnome gnome-keyring
+# XDG portals: KDE's own portal (xdg-desktop-portal-kde) ships with the Plasma packages
+# below and handles screenshots/screencast/file dialogs natively on Plasma Wayland. The
+# GTK portal is kept only as a fallback so GTK/Flatpak apps still get a native file
+# chooser. No GNOME portal and no gnome-keyring: KWallet (kwallet-pam, installed in the
+# Plasma section) provides the Secret Service, keeping secrets in the KDE stack.
+dnf5 -y install xdg-desktop-portal-gtk
 
-# Power profiles: DMS's profile widget (Quickshell UPower PowerProfiles) talks to the
-# net.hadess.PowerProfiles D-Bus interface, which nothing in the base image provides.
-# power-profiles-daemon supplies it (D-Bus activated; enable so it's always available).
+# Power profiles: Plasma's PowerDevil battery/power KCM and the panel's power widget talk
+# to the net.hadess.PowerProfiles D-Bus interface. power-profiles-daemon supplies it
+# (D-Bus activated; enable so it's always available).
 dnf5 -y install power-profiles-daemon
 systemctl enable power-profiles-daemon.service
 
-# X11-on-Wayland (Steam/Discord) + polkit agent
-dnf5 -y install xwayland-satellite mate-polkit
+# PolicyKit authentication agent (privilege prompts). KDE's own agent
+# (polkit-kde-authentication-agent-1) is used so the prompt matches Breeze.
+dnf5 -y install polkit-kde
 
-dnf5 -y install greetd-selinux
 dnf5 -y install google-noto-sans-fonts google-noto-emoji-fonts
 
+### Localisation / language packs
+#
+# The fedora-bootc base ships only the minimal locale set (glibc-minimal-langpack: basically
+# C.UTF-8 + en_US), so every other language's regional formats are unavailable and Plasma's
+# "Region & Language" KCM has almost nothing to offer. Pull the full glibc locale set so any
+# language is selectable straight from System Settings -- no CLI, matching this image's
+# "works on anyone's machine" goal. KDE's own UI translations already ship inside the
+# Plasma/KF6 RPMs, so the locales are the missing piece. hunspell + the en/pl dictionaries
+# cover desktop spell-check out of the box (add more languages later via Discover/sysexts).
+dnf5 -y install glibc-all-langpacks hunspell hunspell-en-US hunspell-pl
+
 # Login is handled by the Plasma Login Manager (PLM) -- Plasma's own display manager --
-# set up in the KDE Plasma section below (Plasma is the first-class desktop now). greetd +
-# the DMS greeter stay installed but disabled, kept as an easy fallback; PLM lists the niri
-# session too.
+# set up in the KDE Plasma section below (Plasma is the first-class desktop). The Steam
+# gamescope session stays selectable from the login screen.
 systemctl set-default graphical.target
 
 ### Steam / gamescope session
 
-# Provides wayland-sessions/steam.desktop (selectable in the greeter) and pulls in
+# Provides wayland-sessions/steam.desktop (selectable on the login screen) and pulls in
 # steam, gamescope and mangohud
 dnf5 -y install gamescope-session-guide
 
@@ -266,15 +236,14 @@ sed -i 's|^Exec=gamescope-session$|Exec=niriblue-gamescope-session|' \
 
 ### Applications (external repos via system_files: zen-browser COPR)
 
-# The default app ecosystem is KDE: the file manager (dolphin), editor (kate), calculator
-# (kcalc), viewers (gwenview/okular), archiver (ark), disks (plasma-disks +
-# kde-partitionmanager) and scanning (skanpage) are installed natively in the KDE Plasma
-# section below -- NOT here, and NOT as Flatpaks (the GNOME Flatpaks are dropped from
-# flatpaks.list). So nautilus, file-roller, gnome-disk-utility and gparted are gone. kitty
-# stays (niri terminal + niriblue Portal drives it). vscode and tailscale are NOT shipped
-# by default -- add them post-install via sysexts-manager (see LAYERING.md).
+# The default app ecosystem is KDE: the file manager (dolphin), terminal (konsole), editor
+# (kate), calculator (kcalc), viewers (gwenview/okular), archiver (ark), disks
+# (plasma-disks + kde-partitionmanager) and scanning (skanpage) are installed natively in
+# the KDE Plasma section below -- NOT here, and NOT as Flatpaks (the GNOME Flatpaks are
+# dropped from flatpaks.list). So nautilus, file-roller, gnome-disk-utility and gparted are
+# gone. The niriblue Portal drives Konsole (the native KDE terminal). vscode and tailscale
+# are NOT shipped by default -- add them post-install via sysexts-manager (see LAYERING.md).
 dnf5 -y install \
-    kitty \
     kde-connect \
     wine winetricks gamemode vulkan-tools \
     unzip 7zip unrar \
@@ -292,76 +261,94 @@ authselect enable-feature with-fingerprint
 update-desktop-database /usr/share/applications || true
 
 
-### Desktop: full KDE Plasma (Wayland) as the first-class desktop, with its own DM
+### Desktop: full KDE Plasma (Wayland) -- the one and only desktop on this image
 #
-# Plasma is the primary desktop and gets its own display manager: Fedora 44's Plasma Login
-# Manager (PLM, set up below). niri + DMS stays available as a SECOND-class selectable
-# session: PLM (a fork of SDDM) lists every /usr/share/wayland-sessions entry, and the niri
-# session still autostarts DMS because niri.desktop runs niri-session, which does
-# `systemctl --user start niri.service`, and dms.service is wanted by niri.service (set up
-# in the niri section above). So the niri session works the same; it just logs in via PLM.
+# Plasma is THE desktop here (no second-class compositor): a Wayland-native Plasma session
+# with clean upstream Breeze, owning its own display manager (Fedora 44's Plasma Login
+# Manager, set up below). The Steam/gamescope session is the only other selectable session.
 #
-# Hand-picked package set (not the Fedora `kde-desktop-environment` group): keeps Plasma
-# on clean upstream Breeze with no Fedora spin theming, and avoids the group's
-# webcam/Firefox/extras bloat. The trailing packages are the "make it feel finished" bits:
-# Discover update notifier, browser<->panel integration, upstream KDE wallpapers, KWallet
-# PAM auto-unlock and the KDE partition manager (replaces gnome-disk-utility/gparted).
+# Hand-picked package set (not the Fedora `kde-desktop-environment` group): keeps Plasma on
+# clean upstream Breeze with no Fedora spin theming, and avoids the group's
+# webcam/Firefox/extras bloat -- while still pulling in every System Settings module that
+# matters, so the whole machine is configurable from the GUI without ever touching a CLI.
+#
+# Groups below:
+#   core         - workspace, compositor, settings shell, screen locker, launchers
+#   networking   - NetworkManager + audio + Bluetooth applets/KCMs
+#   hardware     - per-device KCMs: displays, Thunderbolt, disks/SMART, drawing tablets,
+#                  printers, colour management, firewall, hardware info centre
+#   integration  - GTK app theming, KWallet (+ PAM auto-unlock), online accounts, vaults
+#   finishing    - Discover update notifier, browser<->panel integration, KDE wallpapers,
+#                  welcome wizard, partition manager (replaces gnome-disk-utility/gparted)
 dnf5 -y install \
     plasma-workspace plasma-workspace-wayland plasma-desktop \
-    plasma-systemsettings kwin-wayland \
+    plasma-systemsettings kwin-wayland kscreenlocker \
+    kdeplasma-addons kde-cli-tools kmenuedit krunner kactivitymanagerd \
     powerdevil kscreen plasma-nm plasma-pa bluedevil \
-    plasma-systemmonitor plasma-thunderbolt plasma-disks \
-    kscreenlocker kdeplasma-addons kde-cli-tools kmenuedit krunner \
+    plasma-systemmonitor kinfocenter \
+    plasma-thunderbolt plasma-disks plasma-firewall firewalld \
+    print-manager colord-kde libwacom \
     xdg-desktop-portal-kde kde-gtk-config breeze-gtk \
-    kwalletmanager kfind \
+    kwalletmanager kwallet-pam kfind \
+    kaccounts-integration kaccounts-providers plasma-vault gocryptfs \
     plasma-discover-notifier plasma-browser-integration \
-    plasma-workspace-wallpapers kwallet-pam kde-partitionmanager
+    plasma-workspace-wallpapers plasma-welcome kde-partitionmanager
 
 ### Login: Plasma Login Manager (PLM) as the single system display manager
 #
-# Plasma is first-class, so it owns the login screen via its own DM -- Fedora 44's Plasma
-# Login Manager (plasmalogin.service), a fork of SDDM, Breeze-only (so it stays clean with
-# no Fedora theming) and Wayland-native. Exactly ONE display manager may own
-# display-manager.service: greetd was the old niri greeter and the Plasma packages may also
-# pull SDDM whose preset would enable it -- two enabled DMs race for VT1 and break login
-# (that is what broke the first attempt). So: install PLM, disable greetd and sddm, and
-# force-enable plasmalogin so it owns display-manager.service unambiguously. PLM lists the
-# niri session from /usr/share/wayland-sessions, so niri stays one click away.
+# Plasma owns the login screen via its own DM -- Fedora 44's Plasma Login Manager
+# (plasmalogin.service), a fork of SDDM, Breeze-only (so it stays clean with no Fedora
+# theming) and Wayland-native. Exactly ONE display manager may own display-manager.service:
+# the Plasma packages may also pull SDDM whose preset would enable it -- two enabled DMs
+# race for VT1 and break login. So: install PLM, disable sddm, and force-enable plasmalogin
+# so it owns display-manager.service unambiguously. PLM lists every
+# /usr/share/wayland-sessions entry, so the Steam/gamescope session stays one click away.
 dnf5 -y install plasma-login-manager kcm-plasmalogin
-systemctl disable greetd.service sddm.service 2>/dev/null || true
+systemctl disable sddm.service 2>/dev/null || true
 systemctl enable --force plasmalogin.service
 
-# Core KDE application suite (native, the default ecosystem now): file manager, terminal,
+# Core KDE application suite (native, the default ecosystem): file manager, terminal,
 # editor, calculator, image/document/screenshot/archive tools, scanning and media. These
 # replace the GNOME Flatpaks (dropped from flatpaks.list) and nautilus (dropped from the
-# image); both the Plasma and niri sessions use them.
+# image).
 dnf5 -y install \
     dolphin dolphin-plugins konsole kate kcalc \
     gwenview okular spectacle ark \
     skanpage haruna
 
-### Software center: KDE Discover + PackageKit-bootc backend
+### Software center: KDE Discover (Flatpak) + automatic bootc OS updates
 #
-# Replaces GNOME Software. Discover handles Flatpaks via plasma-discover-flatpak (Flathub
-# is added on first boot by niriblue-flatpak-setup) and OS image updates via PackageKit
-# (plasma-discover-packagekit). The PackageKit-bootc backend (compiled in the
-# pk-bootc-builder Containerfile stage and COPY'd into the image) is reused unchanged --
-# it is a generic PackageKit backend, so Discover drives it through PackageKit exactly as
-# GNOME Software did. Switch PackageKit's default backend from dnf to bootc: on a bootc
-# system there is no RPM layering for the dnf backend to manage.
-dnf5 -y install \
-    plasma-discover plasma-discover-flatpak plasma-discover-packagekit \
-    PackageKit
-if grep -q '^DefaultBackend=' /etc/PackageKit/PackageKit.conf; then
-    sed -i 's/^DefaultBackend=.*/DefaultBackend=bootc/' /etc/PackageKit/PackageKit.conf
-else
-    printf '\n[Daemon]\nDefaultBackend=bootc\n' >> /etc/PackageKit/PackageKit.conf
-fi
+# Discover handles Flatpaks via plasma-discover-flatpak (Flathub is added on first boot by
+# niriblue-flatpak-setup). It is deliberately NOT wired up to PackageKit:
+#
+#   The previous image compiled an out-of-tree PackageKit-bootc backend from source and set
+#   PackageKit's DefaultBackend=bootc so Discover could drive OS image updates. That backend
+#   tracks PackageKit's *internal* (unstable) backend ABI, so a PackageKit update would make
+#   packagekitd fail to load it -- which surfaces in Discover as
+#   "Could not activate remote peer 'org.freedesktop.PackageKit': unit failed". Rather than
+#   carry that fragile from-source backend, OS image updates are handled natively by bootc
+#   itself (below) and PackageKit is left out of the image entirely, so nothing tries to
+#   activate org.freedesktop.PackageKit and Discover stays error-free.
+#
+# plasma-discover-packagekit is therefore NOT installed.
+dnf5 -y install plasma-discover plasma-discover-flatpak
+
+# Defensive: make sure the PackageKit backend plugin is not present even if a weak
+# dependency (Recommends:) of Discover/the notifier tried to pull it back in. Removing only
+# the libdiscover plugin (not PackageKit core) is enough -- with no plugin loaded, Discover
+# never activates org.freedesktop.PackageKit, so the "unit failed" error cannot occur.
+dnf5 -y remove plasma-discover-packagekit 2>/dev/null || true
+
+# Automatic OS image updates without a CLI: bootc ships a fetch-apply-updates timer that
+# checks the registry on a schedule and stages any newer image; it takes effect on the next
+# reboot (no forced reboot, no terminal needed). `ujust update` / the Portal stay available
+# for an on-demand update. This replaces the Discover/PackageKit OS-update path removed above.
+systemctl enable bootc-fetch-apply-updates.timer
 
 ### niriblue Portal: GTK4 GUI front-end for the ujust recipes (the niriblue
 ### counterpart of the Bazzite Portal / ublue-os yafti-gtk). It lives in the IMAGE
 ### layer rather than as a Flatpak because it drives host tooling (`ujust`, bootc,
-### flatpak, sysexts-manager, kitty) directly -- a sandboxed Flatpak could not.
+### flatpak, sysexts-manager, konsole) directly -- a sandboxed Flatpak could not.
 # The script (/usr/bin/niriblue-portal), config (/usr/share/niriblue/portal/portal.yml),
 # desktop entry, icon and metainfo all ship via system_files. It needs the GTK4/Adwaita
 # Python bindings (PyGObject) + PyYAML; gtk4/libadwaita are listed explicitly here because
@@ -404,7 +391,7 @@ systemctl enable niriblue-sysext-setup.service
 
 ### First-boot progress gate (see LAYERING.md). niriblue-firstboot runs the three setup
 ### steps above in sequence on the very first boot, with on-screen progress on the
-### Plymouth splash, and is ordered before greetd so the desktop does not appear until it
+### Plymouth splash, and is ordered before the display manager so the desktop does not appear until it
 ### finishes. It always releases the gate (so no network never locks the user out); the
 ### standalone setup units above remain the per-boot retry net for anything unfinished.
 chmod 0755 /usr/libexec/niriblue-firstboot
@@ -445,23 +432,12 @@ chmod 0755 /usr/bin/ujust
 # (1) fedora-bootc can ship an /etc/gshadow holding a group entry (e.g. utempter)
 #     that has no matching line in /etc/group. At first boot systemd-sysusers aborts
 #     its entire (atomic) run on the resulting `/etc/gshadow: Group "..." already
-#     exists` conflict, so NONE of the system users get created -- greetd included --
-#     and the graphical login never comes up. The same inconsistency silently breaks
-#     the useradd in dms-greeter's RPM preinstall scriptlet. grpconv rebuilds
-#     /etc/gshadow from /etc/group, dropping the orphaned entries.
+#     exists` conflict, so NONE of the system users get created -- the Plasma Login
+#     Manager's "sddm" user included -- and the graphical login never comes up. grpconv
+#     rebuilds /etc/gshadow from /etc/group, dropping the orphaned entries.
 grpconv
 
-# (2) dms-greeter runs its session as a dedicated "greeter" user (see its tmpfiles.d,
-#     which owns /var/cache/dms-greeter as greeter:greeter, and /etc/greetd/config.toml).
-#     That user is normally created by the package's preinstall useradd, but that
-#     no-ops silently if shadow state was inconsistent during the build. Create it
-#     idempotently so the greeter always has a valid owner -- otherwise dms-greeter
-#     aborts at launch ("cache directory does not exist") and greetd never shows a login.
-getent group greeter >/dev/null || groupadd -r greeter
-getent passwd greeter >/dev/null || \
-    useradd -r -g greeter -d /var/lib/greeter -s /bin/bash -c "System Greeter" greeter
-
-# (3) Create every remaining system user now so first boot has nothing left to do.
+# (2) Create every remaining system user now so first boot has nothing left to do.
 systemd-sysusers
 
 ### Branding: present as niriblue while staying Fedora-compatible
