@@ -287,7 +287,7 @@ dnf5 -y install \
     powerdevil kscreen plasma-nm plasma-pa bluedevil \
     plasma-systemmonitor kinfocenter \
     plasma-thunderbolt plasma-disks plasma-firewall firewalld \
-    print-manager colord-kde libwacom \
+    plasma-print-manager colord-kde libwacom \
     xdg-desktop-portal-kde kde-gtk-config breeze-gtk \
     kwalletmanager kwallet-pam kfind \
     kaccounts-integration kaccounts-providers plasma-vault gocryptfs \
