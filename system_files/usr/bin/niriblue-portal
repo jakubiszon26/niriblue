@@ -4,7 +4,7 @@ niriblue Portal — a simple GTK4/Adwaita GUI for running niriblue `ujust` recip
 
 Adapted from ublue-os/yafti-gtk (the Bazzite Portal, GPL-3.0-only) and rebranded
 for niriblue: the config lives at /usr/share/niriblue/portal/portal.yml and
-one-shot actions open in kitty (niriblue's terminal) instead of xdg-terminal-exec.
+one-shot actions open in Konsole (KDE's terminal) instead of xdg-terminal-exec.
 """
 
 import subprocess
@@ -70,7 +70,7 @@ def initialize_gtk():
 
 
 def build_terminal_command(script):
-    """Run the script in a kitty window that stays open until the user dismisses it."""
+    """Run the script in a Konsole window that stays open until the user dismisses it."""
     wrapped = (
         f"{script}\n"
         "rc=$?\n"
@@ -79,8 +79,9 @@ def build_terminal_command(script):
         "read -r _\n"
     )
     return [
-        "kitty",
-        "--title", APP_TITLE,
+        "konsole",
+        "-p", f"tabtitle={APP_TITLE}",
+        "-e",
         "bash",
         "--noprofile",
         "--norc",
@@ -561,7 +562,7 @@ class NiribluePortal(Gtk.Window):
             subprocess.Popen(build_terminal_command(script))
             return None
         except FileNotFoundError:
-            return "The terminal (kitty) was not found."
+            return "The terminal (konsole) was not found."
         except Exception as e:
             return f"Terminal launch failed: {e}"
 

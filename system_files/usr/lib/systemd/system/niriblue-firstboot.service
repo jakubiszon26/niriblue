@@ -1,11 +1,11 @@
 [Unit]
 Description=niriblue first-boot setup (gated, with on-screen progress)
-# Run while the Plymouth splash is still up and BEFORE the greeter, so the desktop does
-# not appear until first-boot installs are done. network-online so the install steps can
-# reach the network; the splash stays because we order before plymouth-quit*.
+# Run while the Plymouth splash is still up and BEFORE the login screen, so the desktop
+# does not appear until first-boot installs are done. network-online so the install steps
+# can reach the network; the splash stays because we order before plymouth-quit*.
 After=network-online.target plymouth-start.service
 Wants=network-online.target
-Before=plymouth-quit.service plymouth-quit-wait.service greetd.service display-manager.service plasmalogin.service
+Before=plymouth-quit.service plymouth-quit-wait.service display-manager.service plasmalogin.service
 ConditionPathExists=!/var/lib/niriblue/firstboot.done
 
 [Service]

@@ -12,22 +12,28 @@ Anything that must exist before/while userspace comes up, or that cannot be a la
 `/usr` overlay, belongs here.
 
 Examples in this image: the CachyOS **kernel**, the full **device-firmware** set +
-microcode, the first-class **KDE Plasma** desktop + **Plasma Login Manager** + its core KDE
-app suite, **niri** + **DankMaterialShell** (second-class selectable session), **Discover**
-+ the PackageKit-bootc backend, XDG **portals**, **eGPU**/Thunderbolt bits (`bolt`, kargs),
-audio stack, the hardware daemons (fwupd/thermald/bluez/cups/sane/ModemManager), the
-Steam/gamescope session, `libvirt`. These need `/etc` and units present at early boot
-and/or ship kernel modules, so they cannot move to a sysext.
+microcode, the **KDE Plasma** desktop + **Plasma Login Manager** + its core KDE app suite +
+the full set of System Settings KCMs, **Discover** (Flatpak), XDG **portals**,
+**eGPU**/Thunderbolt bits (`bolt`, kargs), the audio stack, the hardware daemons
+(fwupd/thermald/bluez/cups/sane/ModemManager), the **Steam/gamescope** session, `libvirt`.
+These need `/etc` and units present at early boot and/or ship kernel modules, so they
+cannot move to a sysext.
 
-> **One login manager.** Plasma is the first-class desktop and owns the display manager:
-> Fedora 44's **Plasma Login Manager** (`plasmalogin.service`, a Breeze-only fork of SDDM).
-> It lists every `/usr/share/wayland-sessions/*.desktop` (Plasma, niri, Steam), so niri
-> stays selectable; the niri session still autostarts DMS because `niri.desktop` runs
-> `niri-session` → `niri.service` (which `Wants` `dms.service`). Exactly one DM may be
-> enabled, so `build.sh` **disables greetd and `sddm.service`** and force-enables
-> `plasmalogin.service` — otherwise a second DM races for VT1 and breaks login. The
-> first-boot gate (`niriblue-firstboot.service`) is ordered `Before=display-manager.service`
-> so it still holds the splash until setup finishes.
+> **One login manager, one desktop.** Plasma is the only desktop and owns the display
+> manager: Fedora 44's **Plasma Login Manager** (`plasmalogin.service`, a Breeze-only fork
+> of SDDM). It lists every `/usr/share/wayland-sessions/*.desktop` (Plasma + Steam), so the
+> gamescope session stays selectable. Exactly one DM may be enabled, so `build.sh`
+> **disables `sddm.service`** (which the Plasma packages may pull and pre-enable) and
+> force-enables `plasmalogin.service` — otherwise a second DM races for VT1 and breaks
+> login. The first-boot gate (`niriblue-firstboot.service`) is ordered
+> `Before=display-manager.service` so it still holds the splash until setup finishes.
+
+> **OS updates without PackageKit.** Discover is a Flatpak-only store here. OS image
+> updates are handled natively by bootc's `bootc-fetch-apply-updates.timer` (staged in the
+> background, applied on next reboot). The old out-of-tree PackageKit-bootc backend was
+> dropped: it tracked PackageKit's unstable internal ABI and broke Discover with
+> "Could not activate remote peer 'org.freedesktop.PackageKit': unit failed" whenever
+> PackageKit updated. PackageKit is left out of the image entirely.
 
 ### 2. systemd-sysext — `sysexts-manager`, community channel
 Native FHS apps that want system integration but should be **add/removable without
@@ -67,7 +73,7 @@ Sandboxed graphical applications. Flathub + the app list are set up on first boo
 
 > **Exception — niriblue Portal.** The Portal is a GUI app but ships in the **IMAGE**
 > layer, not as a Flatpak, because it is a system control panel that drives host tooling
-> directly (`ujust`, `bootc`, `flatpak`, `sysexts-manager`, kitty). A sandboxed Flatpak
+> directly (`ujust`, `bootc`, `flatpak`, `sysexts-manager`, konsole). A sandboxed Flatpak
 > could not run those. It is `/usr/bin/niriblue-portal` (a small GTK4/Adwaita script) +
 > `/usr/share/niriblue/portal/portal.yml`; add/remove actions by editing the YAML to match
 > `niriblue.just`.
@@ -85,8 +91,8 @@ Sandboxed graphical applications. Flathub + the app list are set up on first boo
 
 The sysext, Nix and Flatpak layers install at **first boot**, not at image build (they
 live in `/var`, which is machine-local state on bootc). `niriblue-firstboot` runs the
-three steps in sequence while the Plymouth splash is still up and **before the greeter**,
-so the desktop only appears once setup is done, with on-screen progress. (For the sysext
+three steps in sequence while the Plymouth splash is still up and **before the login
+screen**, so the desktop only appears once setup is done, with on-screen progress. (For the sysext
 step this means only the `sysexts-manager` tool itself — niriblue installs no sysexts by
 default; see layer 2.)
 

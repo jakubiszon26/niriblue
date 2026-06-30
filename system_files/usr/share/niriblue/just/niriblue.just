@@ -1,6 +1,6 @@
 # niriblue recipes — run with: ujust <recipe>
 # Some recipes are adapted from ublue-os/bazzite (MIT), trimmed for a plain
-# Fedora bootc + niri system (no gum / ublue helpers).
+# Fedora bootc + KDE Plasma system (no gum / ublue helpers).
 
 # List available recipes
 default:
